@@ -1,0 +1,26 @@
+
+> @ dev /Users/litebrygg/Documents/M2
+> next dev -p 3000
+
+   ▲ Next.js 15.5.6
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.85:3000
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 1161ms
+ ✓ Compiled /middleware in 224ms (114 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 1396ms (605 modules)
+ ⨯ ReferenceError: useState is not defined
+    at DockBar (src/components/DockBar.tsx:8:33)
+   6 | export default function DockBar(){
+   7 |   // Lokal state – vi gjør dock uavhengig av provider
+>  8 |   const [windows, setWindows] = useState<Win[]>([])
+     |                                 ^
+   9 |   const [collapsed, setCollapsed] = useState(false)
+  10 |
+  11 |   // Legg til en demo-tab hvis tomt (kan fjernes hvis du ikke vil ha default) {
+  digest: '1247171961'
+}
+ GET / 500 in 1602ms

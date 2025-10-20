@@ -1,0 +1,156 @@
+: "${READ_BASE:="$BASE/rest/all/V1"}"
+: "${WRITE_BASE:="$BASE/rest/V1"}"
+#!/usr/bin/env sh
+set -eu
+
+: "${BASE:?BASE not set}; ${AUTH_ADMIN:?AUTH_ADMIN not set}"
+: "${PARENT_SKU:=TEST-CFG}"
+: "${ATTR_CODE:=cfg_color}"
+: "${WEBSITE_ID:=1}"
+: "${SOURCE_CODE:=default}"
+: "${ATTR_SET_ID:=4}"
+
+# NY farge/sku/qty:
+: "${NEW_LABEL:=}"
+: "${NEW_SKU:=}"
+: "${NEW_QTY:=10}"
+: "${NEW_VAL_ID:=}"   # valgfritt: hopp over label->value lookup
+
+fail() { echo "❌ $*"; exit 1; }
+
+# 1) Finn/lag value_index
+VAL_ID="${NEW_VAL_ID:-}"
+if [ -z "$VAL_ID" ]; then
+  # Prøv å lage option (hvis ACL tillater det), ellers fall tilbake til oppslag
+  CREATE_CODE=$(curl -sS -o /tmp/opt-create.json -w '%{http_code}' \
+    -X POST -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+    --data "$(jq -n --arg label "${NEW_LABEL:?NEW_LABEL mangler}" \
+      '{option:{label:$label,sort_order:99,is_default:false}}')" \
+    "$WRITE_BASE/products/attributes/$ATTR_CODE/options" || true)
+
+  if [ "$CREATE_CODE" = "200" ] || [ "$CREATE_CODE" = "201" ]; then
+    VAL_ID=$(jq -r '.' </tmp/opt-create.json)
+  else
+    # ACL eller annet – slå opp verdi-id ved label
+    OPTS=$(curl -sS -H "$AUTH_ADMIN" "$WRITE_BASE/products/attributes/$ATTR_CODE/options")
+    VAL_ID=$(printf '%s' "$OPTS" | jq -r --arg L "$NEW_LABEL" '.[]? | select(.label==$L and .value!="") | .value' | head -n1)
+    [ -n "$VAL_ID" ] || fail "Fant ikke option for label \"$NEW_LABEL\" og kunne ikke opprette (HTTP $CREATE_CODE)."
+  fi
+fi
+
+# 2) SKU: hvis tom, lag fra label (kun ASCII trygt)
+if [ -z "${NEW_SKU:-}" ]; then
+  SAFE=$(printf '%s' "$NEW_LABEL" | tr -cs '[:alnum:]' '-' | tr '[:lower:]' '[:upper:]')
+  NEW_SKU="TEST-$SAFE"
+fi
+
+# 3) Upsert simple-produkt (POST->PUT)
+POST_CODE=$(curl -sS -o /tmp/prod-create.json -w '%{http_code}' \
+  -X POST -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+  --data "$(jq -n \
+    --arg sku "$NEW_SKU" \
+    --arg name "$NEW_LABEL" \
+    --arg attr "$ATTR_CODE" \
+    --arg val "$VAL_ID" \
+    --argjson set ${ATTR_SET_ID:-4} \
+    --argjson wid ${WEBSITE_ID:-1} \
+    '{product:{
+      sku:$sku,name:$name,type_id:"simple",
+      attribute_set_id:$set,visibility:1,price:399,status:1,weight:1,
+      extension_attributes:{website_ids:[$wid]},
+      custom_attributes:[{attribute_code:$attr,value:$val}]
+    }}')" \
+  "$WRITE_BASE/products" || true)
+
+if [ "$POST_CODE" = "200" ] || [ "$POST_CODE" = "201" ]; then
+  :
+else
+  PUT_CODE=$(curl -sS -o /tmp/prod-put.json -w '%{http_code}' \
+    -X PUT -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+    --data "$(jq -n \
+      --arg sku "$NEW_SKU" \
+      --arg name "$NEW_LABEL" \
+      --arg attr "$ATTR_CODE" \
+      --arg val "$VAL_ID" \
+      --argjson set ${ATTR_SET_ID:-4} \
+      --argjson wid ${WEBSITE_ID:-1} \
+      '{product:{
+        sku:$sku,name:$name,type_id:"simple",
+        attribute_set_id:$set,visibility:1,price:399,status:1,weight:1,
+        extension_attributes:{website_ids:[$wid]},
+        custom_attributes:[{attribute_code:$attr,value:$val}]
+      }}')" \
+    "$WRITE_BASE/products/$NEW_SKU" || true)
+  [ "$PUT_CODE" = "200" ] || fail "PUT update feilet ($PUT_CODE): $(cat /tmp/prod-put.json || true)"
+fi
+
+# 4) MSI lager
+STOCK_CODE=$(curl -sS -o /tmp/stock.json -w '%{http_code}' \
+  -X POST -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+  --data "$(jq -n \
+    --arg sku "$NEW_SKU" \
+    --arg src "${SOURCE_CODE:-default}" \
+    --argjson qty ${NEW_QTY:-10} \
+    '{sourceItems:[{sku:$sku,source_code:$src,quantity:$qty,status:1}]}' )" \
+  "$WRITE_BASE/inventory/source-items" || true)
+case "$STOCK_CODE" in
+  200|207) : ;;
+  *) fail "Lager-feil ($STOCK_CODE): $(cat /tmp/stock.json || true)" ;;
+esac
+
+# 5) Parent option – sørg for at value_index finnes
+# Les eksisterende option-id (om finnes)
+OPT_JSON=$(curl -sS -H "$AUTH_ADMIN" "$WRITE_BASE/products/$PARENT_SKU?fields=extension_attributes" \
+  | jq -c '.extension_attributes.configurable_product_options // []')
+OPT_ID=$(printf '%s' "$OPT_JSON" | jq -r --arg code "$ATTR_CODE" '.[] | select(.label|tostring|ascii_downcase|contains("config") or .label==$code or .attribute_id!=null) | .id' | head -n1)
+
+if [ -z "$OPT_ID" ] || [ "$OPT_ID" = "null" ]; then
+  # Lag ny option for ATTR_CODE (krever attribute_id – hent den)
+  ATTR_ID=$(curl -sS -H "$AUTH_ADMIN" "$WRITE_BASE/products/attributes/$ATTR_CODE" | jq -r '.attribute_id')
+  [ -n "$ATTR_ID" ] || fail "Fant ikke attribute_id for $ATTR_CODE"
+  PAYLOAD=$(jq -n --arg attr_id "$ATTR_ID" --arg label "$ATTR_CODE" \
+    --argjson val "$VAL_ID" \
+    '{option:{attribute_id:$attr_id,label:$label,position:0,is_use_default:true,values:[{value_index:$val}]}}')
+  CREATE_OPT_CODE=$(curl -sS -o /tmp/opt.json -w '%{http_code}' \
+    -X POST -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+    --data-binary "$PAYLOAD" \
+    "$WRITE_BASE/configurable-products/$PARENT_SKU/options" || true)
+  [ "$CREATE_OPT_CODE" = "200" ] || [ "$CREATE_OPT_CODE" = "201" ] || fail "Opprette parent option feilet ($CREATE_OPT_CODE): $(cat /tmp/opt.json || true)"
+else
+  # Utvid eksisterende option med value_index om mangler
+  CURR=$(printf '%s' "$OPT_JSON" | jq -c --arg id "$OPT_ID" '.[] | select(.id==($id|tonumber))')
+  HAS=$(printf '%s' "$CURR" | jq -e --arg val "$VAL_ID" '.values[]? | select((.value_index|tostring)==$val)' >/dev/null 2>&1 || echo "no")
+  if [ "$HAS" = "no" ]; then
+    BODY=$(jq -n \
+      --argjson id "$OPT_ID" \
+      --arg attr_id "$(printf '%s' "$CURR" | jq -r '.attribute_id')" \
+      --arg label    "$(printf '%s' "$CURR" | jq -r '.label')" \
+      --argjson vals "$(printf '%s' "$CURR" | jq -c '.values')" \
+      --argjson add  "$VAL_ID" \
+      '{
+        option:{
+          id:$id, attribute_id:$attr_id, label:$label, position:0, is_use_default:true,
+          values:($vals + [{value_index:$add}])
+        }
+      }')
+    PUT_CODE=$(curl -sS -o /tmp/opt-put.json -w '%{http_code}' \
+      -X PUT -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+      --data-binary "$BODY" \
+      "$WRITE_BASE/configurable-products/$PARENT_SKU/options/\(echo "$OPT_ID")" || true)
+    [ "$PUT_CODE" = "200" ] || fail "Oppdatere parent option feilet ($PUT_CODE): $(cat /tmp/opt-put.json || true)"
+  fi
+fi
+
+# 6) Attach child
+ATTACH_CODE=$(curl -sS -o /tmp/attach.json -w '%{http_code}' \
+  -X POST -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+  --data "$(jq -n --arg sku "$NEW_SKU" '{childSku:$sku}')" \
+  "$WRITE_BASE/configurable-products/$PARENT_SKU/child" || true)
+if [ "$ATTACH_CODE" = "200" ]; then : ; else
+  if ! grep -q 'already attached' /tmp/attach.json 2>/dev/null; then
+    fail "Attach feilet ($ATTACH_CODE): $(cat /tmp/attach.json || true)"
+  fi
+fi
+
+# 7) Status
+curl -sS -H "$AUTH_ADMIN" "$WRITE_BASE/configurable-products/$PARENT_SKU/children" | jq -c 'map(.sku)'

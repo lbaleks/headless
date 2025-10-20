@@ -1,0 +1,36 @@
+[
+  {
+    "id": "prod_1760073037041",
+    "title": "Tradisjonsøl med hint av blomster og sitrus",
+    "subtitle": "Litebrygg AS",
+    "description": "Auto-generert forslag basert på: \"Tradisjonsøl med hint av blomster og sitrus\". Rediger før publisering.",
+    "attributes": [
+      {
+        "key": "brand",
+        "value": "Litebrygg"
+      },
+      {
+        "key": "origin",
+        "value": "NO"
+      }
+    ],
+    "images": []
+  },
+  {
+    "id": "prod_1760073532478",
+    "title": "Pilsner tradisjonell - saaz og citra",
+    "subtitle": "Litebrygg AS",
+    "description": "Auto-generert forslag basert på: \"Pilsner tradisjonell - saaz og citra\". Rediger før publisering.",
+    "attributes": [
+      {
+        "key": "brand",
+        "value": "Litebrygg"
+      },
+      {
+        "key": "origin",
+        "value": "NO"
+      }
+    ],
+    "images": []
+  }
+]

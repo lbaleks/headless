@@ -1,0 +1,50 @@
+{
+  "items": [
+    {
+      "id": "ORD-1760652121691",
+      "increment_id": "ORD-1760652121691",
+      "status": "new",
+      "created_at": "2025-10-16T22:02:01.691Z",
+      "customer": {
+        "email": "dev+guest@example.com"
+      },
+      "lines": [
+        {
+          "sku": "TEST",
+          "productId": null,
+          "name": "TEST",
+          "qty": 2,
+          "price": 199,
+          "rowTotal": 398,
+          "i": 0
+        }
+      ],
+      "notes": "stub",
+      "total": 398,
+      "source": "local-stub"
+    },
+    {
+      "id": "ORD-1760652145009",
+      "increment_id": "ORD-1760652145009",
+      "status": "processing",
+      "created_at": "2025-10-16T22:02:25.009Z",
+      "customer": {
+        "email": "dev+guest@example.com"
+      },
+      "lines": [
+        {
+          "sku": "TEST",
+          "productId": null,
+          "name": "TEST",
+          "qty": 2,
+          "price": 199,
+          "rowTotal": 398,
+          "i": 0
+        }
+      ],
+      "notes": "stub",
+      "total": 398,
+      "source": "local-stub"
+    }
+  ]
+}

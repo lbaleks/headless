@@ -1,0 +1,39 @@
+"use client";
+import React from "react";
+
+const tiles = [
+  { href:"/admin/integrations/salesforce", title:"Salesforce Commerce", sub:"Kunder, prisbøker, ordre feed", hint:"status: tilkobling klar" },
+  { href:"/admin/integrations/omnium",     title:"Omnium OMS",         sub:"Order orchestration, retur & RMA", hint:"status: planlagt" },
+  { href:"/admin/integrations/multicase",  title:"Multicase",           sub:"ERP/lagersynk, vare- og ordre-eksport", hint:"status: aktiv" },
+  { href:"/admin/integrations/rackbeat",   title:"Rackbeat",            sub:"WMS/stock, innkjøp, plukk/pack", hint:"status: aktiv" },
+];
+
+export default function IntegrationsOverview(){
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-medium">Integrasjoner</h2>
+        <div className="sub">oversikt & status</div>
+      </div>
+
+      <section className="grid-cards">
+        {tiles.map(t=>(
+          <a key={t.href} href={t.href} className="card" style={{textDecoration:"none", color:"inherit"}}>
+            <div className="text-sm font-medium">{t.title}</div>
+            <div className="sub">{t.sub}</div>
+            <div className="sub" style={{marginTop:".5rem"}}>{t.hint}</div>
+          </a>
+        ))}
+      </section>
+
+      <section className="card">
+        <div className="text-sm font-medium mb-2">Teknisk</div>
+        <ul className="sub" style={{lineHeight:1.7}}>
+          <li>• Alle endepunkt: /api/integrations/* (kommer)</li>
+          <li>• Webhooks: /api/webhooks/* (kommer)</li>
+          <li>• Mapper: produkt, kunde, ordre, leveranse (placeholders)</li>
+        </ul>
+      </section>
+    </div>
+  );
+}

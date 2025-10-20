@@ -1,0 +1,123 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
+
+const PORT   = Number(process.env.PORT || 3044);
+const ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
+
+// Støtt gamle variabler som fallback
+const MAGENTO_BASE  = (process.env.MAGENTO_BASE || process.env.M2_BASE_URL || '').trim();
+let   MAGENTO_TOKEN = (process.env.MAGENTO_TOKEN || process.env.M2_ADMIN_TOKEN || '').trim();
+if (MAGENTO_TOKEN && !/^Bearer\s/.test(MAGENTO_TOKEN)) MAGENTO_TOKEN = 'Bearer ' + MAGENTO_TOKEN;
+
+if (!MAGENTO_BASE || !MAGENTO_TOKEN) {
+  console.error('Missing MAGENTO_BASE or MAGENTO_TOKEN in .env');
+  process.exit(1);
+}
+
+const TIMEOUT = Number(process.env.MAGENTO_TIMEOUT_MS || 25000);
+
+const http = axios.create({
+  baseURL: MAGENTO_BASE.replace(/\/+$/,'') + '/rest/all/V1',
+  timeout: TIMEOUT,
+  headers: { Authorization: MAGENTO_TOKEN, 'Content-Type': 'application/json' },
+});
+
+const app = express();
+app.use(express.json());
+app.use(cors({ origin: ORIGIN }));
+
+app.get('/health/magento', async (_req, res) => {
+  try {
+    await http.get('/store/websites');
+    res.json({ ok: true });
+  } catch (err) {
+    const data = err.response?.data ?? String(err);
+    res.status(500).json({ ok: false, error: data });
+  }
+});
+
+// Telle kategorier fra /categories (rekursivt)
+async function countCategories() {
+  const { data } = await http.get('/categories');
+  const ids = new Set();
+  (function walk(n){
+    if (!n) return;
+    if (typeof n === 'object') {
+      if (Object.prototype.hasOwnProperty.call(n, 'id')) ids.add(Number(n.id));
+      if (Array.isArray(n.children_data)) n.children_data.forEach(walk);
+      for (const k of Object.keys(n)) {
+        if (k !== 'children_data') walk(n[k]);
+      }
+    } else if (Array.isArray(n)) {
+      n.forEach(walk);
+    }
+  })(data);
+  return ids.size;
+}
+
+// Hent total_count for produkter via searchCriteria
+async function countProducts() {
+  const { data } = await http.get('/products?searchCriteria[currentPage]=1&searchCriteria[pageSize]=1');
+  return Number(data?.total_count || 0);
+}
+
+app.get('/ops/stats/summary', async (_req, res) => {
+  try {
+    const [products, categories] = await Promise.all([
+      countProducts(),
+      countCategories(),
+    ]);
+    res.json({
+      ok: true,
+      ts: new Date().toISOString(),
+      totals: {
+        products,
+        categories,
+        variants: 0, // kan utvides senere
+      },
+    });
+  } catch (err) {
+    const data = err.response?.data ?? String(err);
+    res.status(500).json({ ok: false, error: data });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`# m2-gateway up on http://localhost:${PORT}`);
+});
+
+// --- injected: stats refresh endpoints (idempotent) ---
+app.post('/ops/stats/refresh', (req, res) => {
+  try {
+    if (typeof CACHE !== 'undefined') {
+      CACHE.stats = null;
+      CACHE.ts = 0;
+    } else if (typeof global !== 'undefined' && global.CACHE) {
+      global.CACHE.stats = null;
+      global.CACHE.ts = 0;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+app.get('/ops/stats/refresh', (req, res) => {
+  try {
+    if (typeof CACHE !== 'undefined') {
+      CACHE.stats = null;
+      CACHE.ts = 0;
+    } else if (typeof global !== 'undefined' && global.CACHE) {
+      global.CACHE.stats = null;
+      global.CACHE.ts = 0;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+// --- end injected ---

@@ -1,0 +1,40 @@
+import { NextResponse } from 'next/server'
+import { promises as fs } from 'fs'
+import path from 'path'
+
+// ... der du allerede har bygd "job" objektet
+const JOBS_DIR = path.join(process.cwd(), 'var', 'jobs')
+await fs.mkdir(JOBS_DIR, { recursive: true })
+await fs.writeFile(
+  path.join(JOBS_DIR, 'latest.json'),
+  JSON.stringify({ item: job }, null, 2),
+  'utf8'
+)
+
+  const JOBS_DIR = path.join(process.cwd(), 'var', 'jobs');
+  await fs.mkdir(JOBS_DIR, { recursive: true });
+  await fs.writeFile(path.join(JOBS_DIR, 'latest.json'), JSON.stringify({ item: job }, null, 2), 'utf8);
+  const JOBS_DIR = path.join(process.cwd(), 'var', 'jobs');
+  await fs.mkdir(JOBS_DIR, { recursive: true });
+  await fs.writeFile(path.join(JOBS_DIR, 'latest.json'), JSON.stringify({ item: job }, null, 2), 'utf8);
+return NextResponse.json(job)
+
+export async function POST() {
+  const base = process.env.BASE_URL || 'http://localhost:3000'
+  const start = new Date().toISOString()
+  const [p, c, o] = await Promise.all([
+    fetch(`${base}/api/products/sync`, { method:'POST' }).then(r=>r.json()).catch(()=>({saved:0})),
+    fetch(`${base}/api/customers/sync`, { method:'POST' }).then(r=>r.json()).catch(()=>({saved:0})),
+    fetch(`${base}/api/orders/sync`, { method:'POST' }).then(r=>r.json()).catch(()=>({saved:0}))
+  ])
+  const job = {
+    id: 'JOB-'+Date.now(),
+    ts: new Date().toISOString(),
+    type: 'sync-all',
+    started: start,
+    finished: new Date().toISOString(),
+    counts: { products:p.saved||0, customers:c.saved||0, orders:o.saved||0 }
+  }
+  await fetch(`${base}/api/jobs`, { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(job) })
+  return NextResponse.json(job)
+}

@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html, body { height: 100%; }
+body { @apply text-slate-900 bg-white antialiased; }
+a { @apply underline underline-offset-2; }
+.card { @apply rounded-2xl border p-4 bg-white shadow-sm; }
+.btn  { @apply px-3 py-1.5 rounded-lg border hover:bg-black/5 disabled:opacity-60; }

@@ -1,0 +1,23 @@
+/* --- Admin base UI --- */
+:root { --border: #e5e7eb; --muted:#6b7280; --bg:#ffffff; --bg-muted:#f8fafc; }
+* { box-sizing: border-box; }
+.btn {
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding:.5rem .75rem; border:1px solid var(--border);
+  border-radius:.75rem; background:var(--bg);
+  font-size:.875rem; line-height:1; cursor:pointer;
+}
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.card { background:var(--bg); border:1px solid var(--border); border-radius:1rem; padding:1rem; }
+.sub { font-size:.75rem; color:var(--muted); }
+.sidebar-link { display:flex; align-items:center; gap:.5rem; padding:.5rem .75rem; border-radius:.75rem; }
+.sidebar-link:hover { background:var(--bg-muted); }
+.sidebar-section { font-size:.75rem; color:var(--muted); padding:.5rem .75rem; margin-top:.75rem; }
+.layout { display:grid; grid-template-columns: 260px 1fr; min-height:100dvh; }
+.layout aside { border-right:1px solid var(--border); padding:1rem; }
+.layout header { display:flex; align-items:center; justify-content:space-between; padding:1rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg); z-index:10; }
+.layout main { padding:1rem; }
+.grid-cards { display:grid; grid-template-columns: repeat(1,minmax(0,1fr)); gap:.75rem; }
+@media (min-width: 640px){ .grid-cards{ grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (min-width:1024px){ .grid-cards{ grid-template-columns: repeat(3,minmax(0,1fr)); } }
+.badge { font-size:.7rem; padding:.15rem .45rem; border:1px solid var(--border); border-radius:.5rem; }

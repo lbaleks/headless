@@ -1,0 +1,12 @@
+{
+  "id": "JOB-1760831467548",
+  "ts": "2025-10-18T23:51:07.548Z",
+  "type": "sync-all",
+  "started": "Sun Oct 19 2025 01:51:07 GMT+0200 (Central European Summer Time)",
+  "finished": "Sun Oct 19 2025 01:51:07 GMT+0200 (Central European Summer Time)",
+  "counts": {
+    "products": 8,
+    "customers": 1,
+    "orders": 6
+  }
+}

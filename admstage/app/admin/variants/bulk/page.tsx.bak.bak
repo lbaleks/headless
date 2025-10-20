@@ -1,0 +1,244 @@
+"use client";
+import { useMemo, useState } from "react";
+import AdminStatus from "../../../components/AdminStatus";
+
+type Row = {
+  parentSku: string;
+  childSku: string;
+  attrCode: string;
+  valueIndex: number;
+  price?: number | null;
+  stock?: number | null;
+  label?: string | null;
+  websiteId?: number | null;
+  status?: "idle" | "sending" | "ok" | "error";
+  note?: string;
+};
+
+const GW = process.env.NEXT_PUBLIC_GATEWAY_BASE || "http://localhost:3044";
+
+function parseCSV(text: string): Row[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) return [];
+
+  // Støtter både komma og semikolon
+  const split = (s: string) => s.split(/[;,]/).map(x => x.trim());
+
+  // Header må inneholde disse
+  const header = split(lines[0]).map(h => h.toLowerCase());
+  const idx = (name: string) => header.indexOf(name);
+
+  const need = ["parentsku", "childsku", "attrcode", "valueindex"];
+  for (const h of need) {
+    if (!header.includes(h)) throw new Error();
+  }
+
+  const iParent = idx("parentsku");
+  const iChild = idx("childsku");
+  const iAttr = idx("attrcode");
+  const iValue = idx("valueindex");
+  const iPrice = idx("price");
+  const iStock = idx("stock");
+  const iLabel = idx("label");
+  const iWeb   = idx("websiteid");
+
+  const rows: Row[] = [];
+  for (let li = 1; li < lines.length; li++) {
+    const cols = split(lines[li]);
+    if (!cols.length) continue;
+    const valueIndexNum = Number(cols[iValue] ?? "");
+    const priceNum      = iPrice >= 0 ? Number(cols[iPrice]) : NaN;
+    const stockNum      = iStock >= 0 ? Number(cols[iStock]) : NaN;
+    const websiteIdNum  = iWeb   >= 0 ? Number(cols[iWeb])   : NaN;
+
+    rows.push({
+      parentSku: cols[iParent] || "",
+      childSku: cols[iChild] || "",
+      attrCode: cols[iAttr] || "",
+      valueIndex: Number.isFinite(valueIndexNum) ? valueIndexNum : NaN,
+      price: Number.isFinite(priceNum) ? priceNum : null,
+      stock: Number.isFinite(stockNum) ? stockNum : null,
+      label: iLabel >= 0 ? (cols[iLabel] || null) : null,
+      websiteId: Number.isFinite(websiteIdNum) ? websiteIdNum : 1,
+      status: "idle",
+      note: "",
+    });
+  }
+  return rows;
+}
+
+async function linkConfigurable(r: Row) {
+  const res = await fetch(, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      parentSku: r.parentSku,
+      childSku: r.childSku,
+      attrCode: r.attrCode,
+      valueIndex: r.valueIndex,
+    }),
+  });
+  return await res.json();
+}
+
+async function upsertPrice(r: Row) {
+  if (typeof r.price !== "number") return { ok: true, skipped: true };
+  const res = await fetch(, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sku: r.childSku, price: r.price }),
+  });
+  return await res.json();
+}
+
+// Bruker heal for å skrive MSI/legacy stock – dette virket hos oss tidligere
+async function upsertStock(r: Row) {
+  if (typeof r.stock !== "number") return { ok: true, skipped: true };
+  const res = await fetch(, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      parentSku: r.parentSku,
+      sku: r.childSku,
+      cfgAttr: r.attrCode,
+      cfgValue: r.valueIndex,
+      label: r.label || r.childSku,
+      websiteId: r.websiteId || 1,
+      stock: { source_code: "default", quantity: r.stock, status: r.stock > 0 ? 1 : 0 },
+    }),
+  });
+  return await res.json();
+}
+
+export default function BulkVariants() {
+  const [text, setText] = useState<string>(
+
+  );
+  const [rows, setRows] = useState<Row[]>([]);
+  const [log, setLog] = useState<string>("");
+
+  const valid = useMemo(() =>
+    rows.every(r =>
+      r.parentSku && r.childSku && r.attrCode && Number.isFinite(r.valueIndex)
+    ), [rows]);
+
+  function addLog(line: string) {
+    setLog(l => (l ? l + "\n" : "") + line);
+  }
+
+  function onParse() {
+    try {
+      const parsed = parseCSV(text);
+      setRows(parsed);
+      addLog();
+    } catch (e: any) {
+      addLog();
+    }
+  }
+
+  async function sendRow(idx: number) {
+    const r = rows[idx];
+    setRows(cur => cur.map((x, i) => i === idx ? { ...x, status: "sending", note: "" } : x));
+    try {
+      const s1 = await linkConfigurable(r);
+      if (!s1?.ok) throw new Error();
+      addLog();
+
+      const s2 = await upsertPrice(r);
+      if (!s2?.ok) throw new Error();
+      if (!s2?.skipped) addLog();
+
+      const s3 = await upsertStock(r);
+      if (!s3?.ok) throw new Error();
+      if (!s3?.skipped) addLog();
+
+      setRows(cur => cur.map((x, i) => i === idx ? { ...x, status: "ok", note: s1?.note || "" } : x));
+    } catch (e: any) {
+      const msg = e?.message || "ukjent feil";
+      addLog();
+      setRows(cur => cur.map((x, i) => i === idx ? { ...x, status: "error", note: msg } : x));
+    }
+  }
+
+  async function sendAll() {
+    for (let i = 0; i < rows.length; i++) {
+      // ikke blokker UI helt, men send sekvensielt for å unngå rate issues
+      // eslint-disable-next-line no-await-in-loop
+      await sendRow(i);
+    }
+  }
+
+  return (
+    <div className="p-6 space-y-4">
+      <h1 className="text-2xl font-bold">🧩 Bulk-varianten</h1>
+      <AdminStatus />
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Lim inn CSV (komma eller semikolon):</div>
+          <textarea
+            className="w-full h-48 border rounded p-2 font-mono text-sm"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            spellCheck={false}
+          />
+          <div className="flex gap-2">
+            <button onClick={onParse} className="px-3 py-2 rounded border hover:bg-black/5">Parse</button>
+            <button onClick={sendAll} disabled={!rows.length || !valid} className="px-3 py-2 rounded border hover:bg-black/5 disabled:opacity-50">Send alle</button>
+          </div>
+          {!valid && rows.length > 0 && (
+            <div className="text-sm text-amber-700 dark:text-amber-300">⚠️ Noen rader mangler påkrevde felt (parentSku, childSku, attrCode, valueIndex)</div>
+          )}
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-[720px] w-full border rounded">
+            <thead className="bg-black/5 dark:bg-white/5 text-sm">
+              <tr>
+                <th className="text-left p-2">Parent</th>
+                <th className="text-left p-2">Child</th>
+                <th className="text-left p-2">Attr=Val</th>
+                <th className="text-left p-2">Pris</th>
+                <th className="text-left p-2">Lager</th>
+                <th className="text-left p-2">Status</th>
+                <th className="text-left p-2">Aksjon</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {rows.map((r, i) => (
+                <tr key={i} className="align-top">
+                  <td className="p-2 text-sm">{r.parentSku}</td>
+                  <td className="p-2 text-sm">{r.childSku}</td>
+                  <td className="p-2 text-sm"><code>{r.attrCode}={r.valueIndex}</code></td>
+                  <td className="p-2 text-sm">{typeof r.price === "number" ? r.price.toFixed(2) : <span className="opacity-50">–</span>}</td>
+                  <td className="p-2 text-sm">{typeof r.stock === "number" ? r.stock : <span className="opacity-50">–</span>}</td>
+                  <td className="p-2 text-sm">
+                    {r.status === "ok" && <span className="px-2 py-1 rounded bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">OK</span>}
+                    {r.status === "sending" && <span className="px-2 py-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">Sender…</span>}
+                    {r.status === "error" && <span className="px-2 py-1 rounded bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300" title={r.note}>Feil</span>}
+                    {!r.status || r.status === "idle" ? <span className="opacity-50">–</span> : null}
+                  </td>
+                  <td className="p-2">
+                    <button
+                      className="px-3 py-1 rounded border hover:bg-black/5 text-sm"
+                      onClick={() => sendRow(i)}
+                    >Sync nå</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <div className="text-sm opacity-70 mb-2">Logg</div>
+        <pre className="text-xs bg-black/5 dark:bg-white/5 p-3 rounded max-h-64 overflow-auto whitespace-pre-wrap">{log}</pre>
+      </div>
+    </div>
+  );
+}

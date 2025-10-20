@@ -1,0 +1,4 @@
+sku,category_ids
+TEST-RED,"2,4"
+TEST-GREEN,"2,5,7"
+TEST-BLUE-EXTRA,"2,7"

@@ -1,0 +1,169 @@
+'use client'
+import ProductMetaSections from '@/components/product/ProductMetaSections'
+
+import * as React from 'react'
+import { useParams } from 'next/navigation'
+import AdminPage from '@/components/AdminPage'
+import Tabs from '@/components/ui/Tabs'
+import OptionsEditor from '@/components/product/OptionsEditor'
+import { normMult, effectiveVariantStock, variantAvailable, effectiveVariantPrice, applyOptionsPriceDelta } from '@/utils/inventory'
+
+type Variant={ id?:string; sku?:string; name?:string; price?:number; stock?:number; multiplier?:number; attributes?:Record<string,string> }
+type OptionValue={label:string;priceDelta?:number}
+type Option={id:string;name:string;type:'select'|'bool';values?:OptionValue[];required?:boolean}
+type Product={
+  id:string; sku?:string; name?:string; status?:string;
+  price?:number; currency?:string; cost?:number; stock?:number;
+  multiplier?:number; variants?:Variant[]; images?:string[];
+  options?:Option[]; slug?:string; metaTitle?:string; metaDescription?:string;
+}
+
+export default function ProductDetail(){
+  const { id } = useParams() as {id:string}
+  const [form,setForm]=React.useState<Product|null|undefined>(undefined)
+  const [tab,setTab]=React.useState('details')
+  const [busy,setBusy]=React.useState(false)
+
+  React.useEffect(()=>{ (async()=>{
+    const j = await fetch('/api/products/'+id,{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)
+    setForm(j??null)
+  })() },[id])
+
+  const save=async()=>{
+    if(!form) return
+    setBusy(true)
+    try{
+      const ok = await fetch('/api/products/'+id,{ method:'PUT', headers:{'content-type':'application/json'}, body:JSON.stringify(form)}).then(r=>r.ok)
+      if(ok) (window as any).lbToast?.('Product saved');
+
+  // normalized tab keys used across UI and render
+  const TAB_KEYS = {
+    overview: "overview",
+    pricing: "pricing",
+    variants: "variants",
+    media: "media",
+    seo: "seo",
+    relations: "relations",
+  };
+ else (window as any).lbToast?.('Save failed')
+    }catch(e:any){ console.error(e); (window as any).lbToast?.('Save failed') }
+    finally{ setBusy(false) }
+  }
+
+  if(form===undefined) return <AdminPage title="Product"><div className="p-6">Loading…</div></AdminPage>
+  if(form===null) return <AdminPage title="Product"><div className="p-6 text-red-600">Not found</div></AdminPage>
+
+  return (
+    <AdminPage title={form.name||form.sku||form.key} actions={<div className="flex gap-2">
+      <button className="border rounded px-3 py-1.5" disabled={busy} onClick={save}>Save</button>
+    </div>}>
+      <Tabs tabs={[
+        {id:'details',label:'Details'},
+        {id:'variants',label:'Variants', count:form.variants?.length||0},
+        {id:'pricing',label:'Pricing'},
+        {id:'options',label:'Options', count:form.options?.length||0},
+        {id:'media',label:'Media', count:form.images?.length||0},
+        {id:'seo',label:'SEO'}
+      ]} active={tab} onChange={setTab}/>
+      
+      {tab==='details'&&(
+        <div className="grid md:grid-cols-2 gap-6 mt-4">
+          <div className="rounded-xl border bg-white p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><div className="text-xs text-neutral-500 mb-1">Name</div><input className="lb-input w-full" value={form.name||''} onChange={e=>setForm(f=>f?{...f,name:e.target.value}:f)}/></div>
+              <div><div className="text-xs text-neutral-500 mb-1">SKU</div><input className="lb-input w-full" value={form.sku||''} onChange={e=>setForm(f=>f?{...f,sku:e.target.value}:f)}/></div>
+              <div><div className="text-xs text-neutral-500 mb-1">Status</div>
+                <select className="lb-input w-full" value={form.status||'active'} onChange={e=>setForm(f=>f?{...f,status:e.target.value}:f)}>
+                  <option value="active">active</option><option value="draft">draft</option><option value="archived">archived</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-xl border bg-white p-4 space-y-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div><div className="text-xs text-neutral-500 mb-1">Base price</div><input type="number" step="0.01" className="lb-input w-full" value={form.price??0} onChange={e=>setForm(f=>f?{...f,price:Number(e.target.value)}:f)}/></div>
+              <div><div className="text-xs text-neutral-500 mb-1">Currency</div><input className="lb-input w-full" value={form.currency||'NOK'} onChange={e=>setForm(f=>f?{...f,currency:e.target.value}:f)}/></div>
+              <div><div className="text-xs text-neutral-500 mb-1">Base stock</div><input type="number" className="lb-input w-full" value={form.stock??0} onChange={e=>setForm(f=>f?{...f,stock:Number(e.target.value)}:f)}/></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab==='variants'&&(
+        <div className="rounded-xl border bg-white p-4 mt-4">
+          <div className="flex justify-between mb-2">
+            <div className="text-sm text-neutral-500">Variants</div>
+            <button className="border rounded px-2 py-1" onClick={()=>setForm(f=>f?{...f,variants:[...(f.variants||[]),{id:String(Date.now()),name:'New'}]}:f)}>Add variant</button>
+          </div>
+          <div className="overflow-auto">
+            <table className="lb-table min-w-[920px] text-sm">
+              <thead><tr>
+                <th>SKU</th><th>Name</th><th className="text-right">Price (override)</th><th className="text-right">Multiplier</th><th className="text-right">Variant stock</th><th className="text-right">Effective stock</th><th></th>
+              </tr></thead>
+              <tbody>
+                {(form.variants||[]).map((v,ix)=>{
+                  const base = Number((v.price ?? form.price) ?? 0)
+                  const m = normMult(v.multiplier)
+                  const effStock = effectiveVariantStock(form.stock, v.stock, v.multiplier)
+                  return (
+                    <tr key={String(v.key||ix)} className="odd:bg-white even:bg-gray-50">
+                      <td className="p-2 border-t"><input className="lb-input w-36" value={v.sku||''} onChange={e=>setForm(f=>f?{...f,variants:(f.variants||[]).map((x,i)=>i===ix?{...x,sku:e.target.value}:x)}:f)}/></td>
+                      <td className="p-2 border-t"><input className="lb-input w-56" value={v.name||''} onChange={e=>setForm(f=>f?{...f,variants:(f.variants||[]).map((x,i)=>i===ix?{...x,name:e.target.value}:x)}:f)}/></td>
+                      <td className="p-2 border-t text-right"><input type="number" step="0.01" className="lb-input w-28 text-right" value={v.price??''} placeholder={String(form.price??0)} onChange={e=>setForm(f=>f?{...f,variants:(f.variants||[]).map((x,i)=>i===ix?{...x,price:e.target.value===''?undefined:Number(e.target.value)}:x)}:f)}/></td>
+                      <td className="p-2 border-t text-right"><input type="number" step="1" className="lb-input w-20 text-right" value={v.multiplier??1} onChange={e=>setForm(f=>f?{...f,variants:(f.variants||[]).map((x,i)=>i===ix?{...x, multiplier:Number(e.target.value)}:x)}:f)}/></td>
+                      <td className="p-2 border-t text-right"><input type="number" className="lb-input w-24 text-right" value={v.stock??''} placeholder="—" onChange={e=>setForm(f=>f?{...f,variants:(f.variants||[]).map((x,i)=>i===ix?{...x, stock:e.target.value===''?undefined:Number(e.target.value)}:x)}:f)}/></td>
+                      <td className="p-2 border-t text-right">{effStock}</td>
+                      <td className="p-2 border-t text-right"><button className="border rounded px-2" onClick={()=>setForm(f=>f?{...f,variants:(f.variants||[]).filter((_,i)=>i!==ix)}:f)}>✕</button></td>
+                    </tr>
+                  )
+                })}
+                {(!form.variants||!form.variants.length)&&<tr><td className="p-3 text-neutral-500" colSpan={99}>No variants</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab==='pricing'&&(
+        <div className="rounded-xl border bg-white p-4 mt-4">
+          <div className="text-sm text-neutral-500 mb-2">Pricing (base fields shown in “Details”)</div>
+          <div className="text-xs text-neutral-500">Variant “Price (override)” takes precedence over base price.</div>
+        </div>
+      )}
+
+      {tab==='options'&&(
+        <div className="rounded-xl border bg-white p-4 mt-4">
+          <OptionsEditor options={form.options||[]} onChange={(opts)=>setForm(f=>f?{...f,options:opts}:f)} />
+        </div>
+      )}
+
+      {tab==='media'&&(
+        <div className="rounded-xl border bg-white p-4 mt-4">
+          <div className="text-sm text-neutral-500 mb-2">Images (paste URL for now)</div>
+          <div className="space-y-2">
+            {(form.images||[]).map((url,ix)=>(
+              <div key={ix} className="flex items-center gap-2">
+                <input className="lb-input flex-1" value={url} onChange={e=>setForm(f=>f?{...f,images:(f.images||[]).map((x,i)=>i===ix?e.target.value:x)}:f)}/>
+                <button className="border rounded px-2" onClick={()=>setForm(f=>f?{...f,images:(f.images||[]).filter((_,i)=>i!==ix)}:f)}>✕</button>
+              </div>
+            ))}
+            <button className="border rounded px-2 py-1" onClick={()=>setForm(f=>f?{...f,images:[...(f.images||[]), 'https://picsum.photos/seed/'+Date.now()+'/600/400']}:f)}>Add image</button>
+          </div>
+        </div>
+      )}
+
+      {tab==='seo'&&(
+        <div className="rounded-xl border bg-white p-4 mt-4">
+          <div className="grid md:grid-cols-3 gap-3">
+            <div><div className="text-xs text-neutral-500 mb-1">Slug</div><input className="lb-input w-full" value={form.slug||''} onChange={e=>setForm(f=>f?{...f,slug:e.target.value}:f)}/></div>
+            <div className="md:col-span-2"><div className="text-xs text-neutral-500 mb-1">Meta title</div><input className="lb-input w-full" value={form.metaTitle||''} onChange={e=>setForm(f=>f?{...f,metaTitle:e.target.value}:f)}/></div>
+            <div className="md:col-span-3"><div className="text-xs text-neutral-500 mb-1">Meta description</div><textarea className="lb-input w-full h-28" value={form.metaDescription||''} onChange={e=>setForm(f=>f?{...f,metaDescription:e.target.value}:f)}/></div>
+          </div>
+        </div>
+      )}
+    
+      {/* Meta/SEO/Associations/Options */}
+      <ProductMetaSections form={form as any} setForm={setForm as any} />
+</AdminPage>
+  )
+}

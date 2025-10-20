@@ -1,0 +1,24 @@
+{
+  "rules": [
+    {
+      "id": "seed-rule-1",
+      "name": "Base margin",
+      "type": "fixed_amount",
+      "value": 1,
+      "enabled": true,
+      "scope": "global",
+      "active": true,
+      "priority": 1
+    },
+    {
+      "id": "r1760304140094",
+      "name": "New rule",
+      "type": "set_price",
+      "value": 1000,
+      "target": "all",
+      "active": true,
+      "priority": 1,
+      "match": "m1-25pk"
+    }
+  ]
+}

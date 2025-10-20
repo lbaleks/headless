@@ -1,0 +1,31 @@
+{
+  "FLOUR-001": {
+    "name": "Hvetemel",
+    "base": { "code": "g", "baseQty": 100, "baseLabel": "100 g" },
+    "basePrice": 9.9,
+    "availableBaseQty": 1200,
+    "variants": [
+      { "label": "100 g",       "multiplier": 1   },
+      { "label": "1 kg",        "multiplier": 10  },
+      { "label": "25 kg sekk",  "multiplier": 250, "priceFactor": 245 }
+    ],
+    "lots": [
+      { "lotId": "L1", "qty": 300, "expiry": "2026-02-01" },
+      { "lotId": "L2", "qty": 900, "expiry": "2026-06-01" }
+    ]
+  },
+  "COFFEE-250": {
+    "name": "Kaffe filtermalt",
+    "base": { "code": "g", "baseQty": 250, "baseLabel": "250 g" },
+    "basePrice": 42.0,
+    "availableBaseQty": 2000,
+    "variants": [
+      { "label": "250 g", "multiplier": 1 },
+      { "label": "1 kg",  "multiplier": 4, "priceFactor": 3.8 }
+    ],
+    "lots": [
+      { "lotId": "A", "qty": 1000, "expiry": "2026-01-01" },
+      { "lotId": "B", "qty": 1000, "expiry": "2026-04-01" }
+    ]
+  }
+}

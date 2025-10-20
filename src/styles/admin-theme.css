@@ -1,0 +1,14 @@
+:root{
+  --panel: #ffffff;
+  --panel-border: #e5e7eb;
+  --muted: #6b7280;
+}
+.admin-panel{ background: var(--panel); border:1px solid var(--panel-border); border-radius:12px; }
+.admin-section{ margin-bottom:16px; }
+.admin-section-title{ font-weight:600; margin-bottom:8px; }
+.lb-label{ display:block; font-size:.85rem; color:var(--muted); margin-bottom:4px; }
+.lb-input{ width:100%; border:1px solid #d1d5db; border-radius:8px; padding:8px 10px; background:#fff; }
+.lb-btn{ border:1px solid #111827; background:#111827; color:#fff; border-radius:8px; padding:8px 12px; }
+.lb-btn.secondary{ background:#fff; color:#111827; border-color:#d1d5db; }
+.lb-table th{ text-align:left; font-weight:600; font-size:.8rem; color:#6b7280; padding:8px; }
+.lb-table td{ padding:8px; }

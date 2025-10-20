@@ -1,0 +1,65 @@
+{
+  "total": 5,
+  "items": [
+    {
+      "id": "JOB-1760725456633",
+      "ts": "2025-10-17T18:24:16.633Z",
+      "type": "sync-all",
+      "started": "Fri Oct 17 2025 20:24:14 GMT+0200 (Central European Summer Time)",
+      "finished": "Fri Oct 17 2025 20:24:16 GMT+0200 (Central European Summer Time)",
+      "counts": {
+        "products": 8,
+        "customers": 1,
+        "orders": 6
+      }
+    },
+    {
+      "id": "JOB-${Date.now()}",
+      "ts": "2025-10-17T18:22:01.347Z",
+      "type": "sync-all",
+      "started": "Fri Oct 17 2025 20:21:59 GMT+0200 (Central European Summer Time)",
+      "finished": "Fri Oct 17 2025 20:22:01 GMT+0200 (Central European Summer Time)",
+      "counts": {
+        "products": 8,
+        "customers": 1,
+        "orders": 6
+      }
+    },
+    {
+      "id": "JOB-${Date.now()}",
+      "ts": "2025-10-17T18:21:59.337Z",
+      "type": "sync-all",
+      "started": "Fri Oct 17 2025 20:21:57 GMT+0200 (Central European Summer Time)",
+      "finished": "Fri Oct 17 2025 20:21:59 GMT+0200 (Central European Summer Time)",
+      "counts": {
+        "products": 8,
+        "customers": 1,
+        "orders": 6
+      }
+    },
+    {
+      "id": "JOB-1760724544481",
+      "ts": "2025-10-17T18:09:04.481Z",
+      "type": "sync-all",
+      "started": "Fri Oct 17 2025 20:09:02 GMT+0200 (Central European Summer Time)",
+      "finished": "Fri Oct 17 2025 20:09:04 GMT+0200 (Central European Summer Time)",
+      "counts": {
+        "products": 8,
+        "customers": 1,
+        "orders": 6
+      }
+    },
+    {
+      "id": "JOB-1760724222194",
+      "ts": "2025-10-17T18:03:42.194Z",
+      "type": "sync-all",
+      "started": "Fri Oct 17 2025 20:03:40 GMT+0200 (Central European Summer Time)",
+      "finished": "Fri Oct 17 2025 20:03:42 GMT+0200 (Central European Summer Time)",
+      "counts": {
+        "products": 8,
+        "customers": 1,
+        "orders": 6
+      }
+    }
+  ]
+}

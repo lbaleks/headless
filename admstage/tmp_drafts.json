@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Pale Ale – Tettnang",
+    "description": "En pale ale brygget med Tettnang, Carapils og Abbey. Profil: 25 IBU og 5% ABV.",
+    "attributes": {
+      "style": "Pale Ale",
+      "hop": "Tettnang",
+      "abv": 5,
+      "ibu": 25,
+      "srm": 6,
+      "yeast": "Abbey",
+      "malt": [
+        "Carapils",
+        "Maris Otter",
+        "Pale Ale"
+      ]
+    },
+    "created": "2025-10-11T09:52:13.379Z",
+    "synced": false
+  },
+  {
+    "name": "Pale Ale – Tettnang",
+    "description": "En pale ale brygget med Tettnang, Carapils og Abbey. Profil: 25 IBU og 5% ABV.",
+    "attributes": {
+      "style": "Pale Ale",
+      "hop": "Tettnang",
+      "abv": 5,
+      "ibu": 25,
+      "srm": 6,
+      "yeast": "Abbey",
+      "malt": [
+        "Carapils",
+        "Maris Otter",
+        "Pale Ale"
+      ]
+    },
+    "created": "2025-10-11T09:43:24.765Z",
+    "synced": false
+  },
+  {
+    "name": "Pilsner – Saaz",
+    "description": "En pilsner brygget med Saaz, Pale Ale og US-05. Profil: 35 IBU og 4.7% ABV.",
+    "attributes": {
+      "style": "Pilsner",
+      "hop": "Saaz",
+      "abv": 4.7,
+      "ibu": 35,
+      "srm": 4,
+      "yeast": "US-05",
+      "malt": [
+        "Pale Ale",
+        "Maris Otter",
+        "Havre"
+      ]
+    },
+    "created": "2025-10-10T06:11:22.967Z",
+    "synced": false
+  },
+  {
+    "name": "Test Pils – Saaz",
+    "description": "Autogenerert testutkast",
+    "sku": "TEST-AUTO-001",
+    "price": 199,
+    "stock": 13,
+    "attributes": {
+      "style": "Pilsner",
+      "hops": [
+        "Saaz"
+      ]
+    }
+  }
+]

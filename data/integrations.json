@@ -1,0 +1,51 @@
+{
+  "providers": [
+    {
+      "key": "magento",
+      "name": "Magento 2",
+      "status": "connected",
+      "config": {
+        "baseUrl": "https://m2-dev.litebrygg.no",
+        "token": "17f4lgjp35l5uwcd0pbsi09vcmcppxm3"
+      },
+      "lastHealth": {
+        "ok": true,
+        "ts": "2025-10-12T19:46:30.735Z"
+      }
+    },
+    {
+      "key": "klaviyo",
+      "name": "Klaviyo",
+      "status": "disconnected",
+      "config": null,
+      "lastHealth": null
+    },
+    {
+      "key": "webhooks",
+      "name": "Webhooks",
+      "status": "connected",
+      "config": {
+        "endpoint": "https://hooks.example/ingest"
+      },
+      "lastHealth": {
+        "ok": true,
+        "ts": "2025-10-12T19:46:30.735Z"
+      }
+    },
+    {
+      "key": "tripletex",
+      "name": "Tripletex",
+      "status": "disabled",
+      "note": "Venter på demo-konto",
+      "config": null,
+      "lastHealth": null
+    },
+    {
+      "key": "sbank1",
+      "name": "Sparebank 1 Regnskap",
+      "status": "disconnected",
+      "config": null,
+      "lastHealth": null
+    }
+  ]
+}

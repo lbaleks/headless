@@ -1,0 +1,22 @@
+{
+  "products": [
+    {
+      "id": "m1",
+      "sku": "HUMLE-MOSAIC-100",
+      "name": "Mosaic Humle 100g",
+      "price": 99,
+      "status": "active",
+      "stock": 42,
+      "category": "Humle"
+    },
+    {
+      "id": "m2",
+      "sku": "MALT-MARIS-1KG",
+      "name": "Maris Otter 1kg",
+      "price": 45,
+      "status": "active",
+      "stock": 9,
+      "category": "Malt"
+    }
+  ]
+}

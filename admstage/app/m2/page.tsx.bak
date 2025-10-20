@@ -1,0 +1,64 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { getJson, GW_BASE } from "@/lib/api";
+
+export default function M2Page() {
+  const [health, setHealth] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [h, s] = await Promise.all([
+          getJson("/health/magento"),
+          getJson("/ops/stats/summary"),
+        ]);
+        if (!alive) return;
+        setHealth(h);
+        setStats(s);
+      } catch (e: any) {
+        if (!alive) return;
+        setError(e?.message || String(e));
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return (
+    <main className="p-6 space-y-6">
+      <h1 className="text-2xl font-semibold">🔗 Gateway / Magento</h1>
+
+      <div className="text-sm text-gray-500">
+        Gateway base: <code>{GW_BASE}</code>
+      </div>
+
+      <section className="space-y-2">
+        <h2 className="text-xl font-medium">Health</h2>
+        <pre className="bg-neutral-100 p-3 rounded">{JSON.stringify(health, null, 2)}</pre>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xl font-medium">Stats</h2>
+        {stats?.totals ? (
+          <pre className="bg-neutral-100 p-3 rounded">{JSON.stringify(stats, null, 2)}</pre>
+        ) : (
+          <div>Ingen statistikk tilgjengelig.</div>
+        )}
+      </section>
+
+      {error && (
+        <section className="space-y-2">
+          <h2 className="text-xl font-medium text-red-600">Error</h2>
+          <pre className="bg-red-50 p-3 rounded border border-red-200">
+            {error}
+          </pre>
+        </section>
+      )}
+    </main>
+  );
+}

@@ -1,0 +1,174 @@
+import { NextResponse } from 'next/server';
+
+const M2_BASE = process.env.MAGENTO_BASE_URL || process.env.M2_BASE_URL
+const M2_TOKEN = process.env.MAGENTO_ADMIN_TOKEN || process.env.M2_ADMIN_TOKEN
+
+// --- In-memory stub store (resettes ved server-restart) ---
+const STUBS = (globalThis as any).__ORD_STUBS__ ||= new Map<string, any>()
+
+async function m2Get<T>(path: string): Promise<T> {
+  if (!M2_BASE || !M2_TOKEN) throw new Error('missing env MAGENTO_BASE_URL/MAGENTO_ADMIN_TOKEN')
+  const url = `${M2_BASE.replace(/\/+$/,'')}/${path.replace(/^\/+/,'')}`
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${M2_TOKEN}` }, cache: 'no-store' })
+  if (!res.ok) {
+    const txt = await res.text().catch(()=>'')
+    throw new Error(`Magento GET ${url} failed: ${res.status} ${txt}`)
+  }
+  return await res.json()
+}
+
+function normalizeOrders(m: any) {
+  const total = m?.total_count ?? 0
+  const items = Array.isArray(m?.items) ? m.items : []
+  return { total, items }
+}
+
+// GET /api/orders  (prepend stubs på page=1)
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const page = Math.max(1, Number(searchParams.get('page') ?? '1') || 1)
+    const size = Math.max(1, Number(searchParams.get('size') ?? '25') || 25)
+    const q = (searchParams.get('q') || '').trim()
+
+    // Magento query
+    const params: string[] = [
+      `searchCriteria[currentPage]=${page}`,
+      `searchCriteria[pageSize]=${size}`,
+      `searchCriteria[sortOrders][0][field]=created_at`,
+      `searchCriteria[sortOrders][0][direction]=DESC`,
+    ]
+    if (q) {
+      params.push(`searchCriteria[filter_groups][0][filters][0][field]=increment_id`)
+      params.push(`searchCriteria[filter_groups][0][filters][0][value]=%25${encodeURIComponent(q)}%25`)
+      params.push(`searchCriteria[filter_groups][0][filters][0][condition_type]=like`)
+    }
+    const raw = await m2Get<any>('V1/orders?' + params.join('&'))
+    const { total, items } = normalizeOrders(raw)
+
+    // Stubs (filtrert og sortert, nyest først)
+    let stubItems = Array.from(STUBS.values())
+      .filter(s => (q ? String(s.increment_id||s.id||'').includes(q) : true))
+      .sort((a,b)=> String(b.created_at).localeCompare(String(a.created_at)))
+
+    // På side 1, prepender vi stubs foran Magento-resultater
+    let mergedItems = items
+    if (page === 1 && stubItems.length) {
+      // Begrens til "size" totalt når vi prepender
+      const takeStub = Math.min(size, stubItems.length)
+      mergedItems = [...stubItems.slice(0, takeStub), ...items].slice(0, size)
+    }
+
+    return NextResponse.json({ total: total + stubItems.length, items: mergedItems }, { status: 200 })
+  } catch (err: any) {
+    console.error('[GET /api/orders] 500', err?.stack || err)
+    return NextResponse.json({ error: 'Internal error', detail: String(err?.message || err) }, { status: 500 })
+  }
+}
+
+// POST /api/orders  (lagrer stub + returnerer 201)
+
+// --- Magento create order (guest cart) ---
+// const M2_BASE = process.env.MAGENTO_BASE_URL || process.env.M2_BASE_URL
+// const M2_TOKEN = process.env.MAGENTO_ADMIN_TOKEN || process.env.M2_ADMIN_TOKEN
+
+async function m2<T>(verb: 'GET'|'POST'|'PUT', path: string, body?: any): Promise<T> {
+  if (!M2_BASE || !M2_TOKEN) throw new Error('Missing MAGENTO_BASE_URL / MAGENTO_ADMIN_TOKEN')
+  const url = `${M2_BASE!.replace(/\/+$/,'')}/${path.replace(/^\/+/,'')}`
+  const res = await fetch(url, {
+    method: verb,
+    headers: {
+      'Authorization': `Bearer ${M2_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined
+  })
+  const txt = await res.text().catch(()=> '')
+  if (!res.ok) throw new Error(`Magento ${verb} ${url} failed: ${res.status} ${txt}`)
+  return (txt ? JSON.parse(txt) : undefined) as T
+}
+
+function pickAddress(input: any){
+  const email = input?.email || 'guest@example.com'
+  const base = {
+    email,
+    firstname: input?.firstname || 'Guest',
+    lastname: input?.lastname || 'User',
+    street: Array.isArray(input?.street) && input.street.length ? input.street : [input?.street?.[0] || 'Testveien 1'],
+    city: input?.city || 'Oslo',
+    postcode: input?.postcode || '0150',
+    country_id: input?.country_id || 'NO',
+    telephone: input?.telephone || '00000000'
+  }
+  return base
+}
+
+
+// === Magento (guest cart) – felles config ===
+// const M2_BASE  = process.env.MAGENTO_BASE_URL   || process.env.M2_BASE_URL
+// const M2_TOKEN = process.env.MAGENTO_ADMIN_TOKEN || process.env.M2_ADMIN_TOKEN
+
+async function m2<T>(verb: 'GET'|'POST'|'PUT', path: string, body?: any): Promise<T> {
+  if (!M2_BASE || !M2_TOKEN) throw new Error('Missing MAGENTO_BASE_URL / MAGENTO_ADMIN_TOKEN')
+  const url = `${M2_BASE!.replace(/\/+$/,'')}/${path.replace(/^\/+/,'')}`
+  const res = await fetch(url, {
+    method: verb,
+    headers: {
+      'Authorization': `Bearer ${M2_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined
+  })
+  const txt = await res.text().catch(()=> '')
+  if (!res.ok) throw new Error(`Magento ${verb} ${url} failed: ${res.status} ${txt}`)
+  return (txt ? JSON.parse(txt) : undefined) as T
+}
+
+function pickAddress(input: any){
+  const email = input?.email || 'guest@example.com'
+  return {
+    email,
+    firstname: input?.firstname || 'Guest',
+    lastname:  input?.lastname  || 'User',
+    street:    Array.isArray(input?.street)&&input.street.length? input.street : [ input?.street?.[0] || 'Testveien 1' ],
+    city:      input?.city || 'Oslo',
+    postcode:  input?.postcode || '0150',
+    country_id:input?.country_id || 'NO',
+    telephone: input?.telephone || '00000000'
+  }
+}
+
+// === ENESTE POST-handler ===
+export async function POST(req: Request) {
+  try {
+    // Hvis du allerede har egen implementasjon (f.eks. createOrder), forsøk å kalle den:
+    if (typeof (globalThis as any).__ORDERS_POST_IMPL === 'function') {
+      const out = await (globalThis as any).__ORDERS_POST_IMPL(req)
+      return NextResponse.json(out, { status: 201 })
+    }
+
+    // Fallback: enkel stub for dev (ingen sideeffekter i Magento)
+    const body = await req.json()
+    const now = Date.now()
+    const out = {
+      id: `ORD-${now}`,
+      increment_id: `ORD-${now}`,
+      status: 'new',
+      created_at: new Date(now).toISOString(),
+      customer: body?.customer ?? {},
+      lines: (body?.lines ?? []).map((l:any, i:number)=>({
+        sku: l.sku, productId: l.productId ?? null, name: l.name ?? l.sku, qty: Number(l.qty||1),
+        price: Number(l.price ?? 0), rowTotal: Number(l.price ?? 0) * Number(l.qty||1), i
+      })),
+      notes: body?.notes ?? null,
+      elapsed_ms: 1,
+      source: 'local-stub'
+    }
+    return NextResponse.json(out, { status: 201 })
+  } catch (err:any) {
+    const msg = err?.message || 'unknown error'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}

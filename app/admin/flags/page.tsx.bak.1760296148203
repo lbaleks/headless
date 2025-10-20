@@ -1,0 +1,75 @@
+"use client";
+import React from "react";
+type Flag = { key:string; on:boolean; note?:string };
+
+async function j(url:string, init?:RequestInit){
+  const r = await fetch(url, { cache:"no-store", ...init });
+  const t = await r.text(); if(!t) return {};
+  try{ return JSON.parse(t); } catch{ return {}; }
+}
+
+export default function FlagsPage(){
+  const [rows,setRows] = React.useState<Flag[]>([]);
+  const [loading,setLoading] = React.useState(true);
+  const [saving,setSaving] = React.useState(false);
+
+  const load = React.useCallback(async()=>{
+    setLoading(true);
+    try {
+      const data:any = await j("/api/admin/flags");
+      setRows(Array.isArray(data?.flags)? data.flags : []);
+    } finally { setLoading(false); }
+  },[]);
+  React.useEffect(()=>{ load(); }, [load]);
+
+  function toggle(idx:number){
+    setRows(prev => prev.map((f,i)=> i===idx ? { ...f, on:!f.on } : f));
+  }
+  async function save(){
+    setSaving(true);
+    try{
+      await fetch("/api/admin/flags", {
+        method:"PUT", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ flags: rows })
+      });
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <main className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-medium">Feature Flags</h2>
+        <div className="flex gap-2">
+          <a className="btn" href="/admin/dashboard">Dashboard</a>
+          <a className="btn" href="/admin/pricing">Pricing</a>
+        </div>
+      </div>
+
+      <section className="card">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs opacity-60">
+              <tr><th className="py-1.5 pr-3">Key</th><th className="py-1.5 pr-3">På</th><th className="py-1.5 pr-3">Notat</th></tr>
+            </thead>
+            <tbody>
+              {loading && <tr><td className="py-2 sub" colSpan={3}>Laster…</td></tr>}
+              {!loading && rows.length===0 && <tr><td className="py-2 sub" colSpan={3}>Ingen flags</td></tr>}
+              {rows.map((f,idx)=>(
+                <tr key={f.key} className="border-t">
+                  <td className="py-1.5 pr-3 font-mono">{f.key}</td>
+                  <td className="py-1.5 pr-3">
+                    <button className="btn" onClick={()=>toggle(idx)}>{f.on?"On":"Off"}</button>
+                  </td>
+                  <td className="py-1.5 pr-3">{f.note||"—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3">
+          <button className="btn" onClick={save} disabled={saving}>{saving?"Lagrer…":"Lagre"}</button>
+        </div>
+      </section>
+    </main>
+  );
+}

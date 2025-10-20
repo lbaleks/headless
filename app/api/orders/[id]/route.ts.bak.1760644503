@@ -1,0 +1,22 @@
+import { NextResponse } from 'next/server'
+import { getOrder, patchOrder, addEvent, toOrderDTO, type OrderLine, type OrderStatus } from '@/lib/orders'
+
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const order = getOrder(id)
+  if(!order) return NextResponse.json({ error:'Not found' }, { status:404 })
+  return NextResponse.json(toOrderDTO(order))
+}
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const body = await req.json().catch(()=>({}))
+  const patch: {
+    status?: OrderStatus; notes?: string; lines?: OrderLine[]
+    eventText?: string; eventTone?: 'info'|'success'|'warn'|'danger'|'neutral'
+  } = body || {}
+  const updated = patchOrder(id, { status:patch.status, notes:patch.notes, lines:patch.lines })
+  if(!updated) return NextResponse.json({ error:'Not found' }, { status:404 })
+  if(patch.eventText) addEvent(id, patch.eventText, patch.eventTone)
+  return NextResponse.json(toOrderDTO(updated))
+}

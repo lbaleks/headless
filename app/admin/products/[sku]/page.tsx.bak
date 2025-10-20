@@ -1,0 +1,158 @@
+// app/admin/products/[id]/page.tsx
+'use client'
+
+import * as React from 'react'
+import { useParams } from 'next/navigation'
+import AdminPage from '@/components/AdminPage'
+import Tabs from '@/components/ui/Tabs'
+import BulkVariantEdit from '@/components/product/BulkVariantEdit'
+import VariantImages from '@/components/product/VariantImages'
+import { normMult, effectiveVariantStock, effectiveVariantPrice, applyOptionsPriceDelta, variantAvailable, type ProductLike, type VariantLike } from '@/utils/inventory'
+
+// En liten lokal Tab-type som matcher Tabs-komponenten vår (key + label)
+type TabDef = { key: string; label: string }
+
+export default function ProductDetail() {
+  const { id } = useParams() as { id: string }
+
+  const [form, setForm] = React.useState<ProductLike | null>(null)
+  const [busy, setBusy] = React.useState(false)
+  const [tab, setTab] = React.useState<string>('general')
+
+// 🔄 Last produktdata
+React.useEffect(() => {
+  let abort = false;
+  // Lagre produkt
+  const save = async () => {
+    if (!form) return;
+    try {
+      setBusy(true);
+      const res = await fetch(`/api/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        (window as any).lbToast?.('Product saved');
+      } else {
+        (window as any).lbToast?.('Save failed');
+    ;
+
+  (async () => {
+    try {
+      const res = await fetch(`/api/products/${id}`);
+      const data = await res.json();
+      if (!abort) setForm(data ?? null);
+    } catch (err) {
+      console.error(err);
+      if (!abort) setForm(null);
+    }
+  })();
+  return () => { abort = true };
+}, [id]);
+
+  // Last produkt
+
+  // Lagre
+      if (res.ok) {
+        ;
+
+(window as any).lbToast?.('Product saved');
+    }
+    
+                          />
+                        </td>
+                        <td className="p-2">
+                          <input
+                            className="lb-input"
+                            defaultValue={v.sku || ''}
+                            onBlur={e => {
+                              const next = [...(form.variants || [])]
+                              next[ix] = { ...v, sku: e.target.value }
+                              update({ variants: next })
+                            }}
+                          />
+                        </td>
+                        <td className="p-2 text-right">
+                          <input
+                            type="number"
+                            className="lb-input text-right"
+                            defaultValue={v.price ?? ''}
+                            placeholder={String(form.price ?? 0)}
+                            onBlur={e => {
+                              const val = e.target.value === '' ? null : Number(e.target.value) || 0
+                              const next = [...(form.variants || [])]
+                              next[ix] = { ...v, price: val }
+                              update({ variants: next })
+                            }}
+                          />
+                        </td>
+                        <td className="p-2 text-right">
+                          <input
+                            type="number"
+                            className="lb-input text-right"
+                            defaultValue={v.multiplier ?? 1}
+                            onBlur={e => {
+                              const val = e.target.value === '' ? null : Number(e.target.value) || 1
+                              const next = [...(form.variants || [])]
+                              next[ix] = { ...v, multiplier: val }
+                              update({ variants: next })
+                            }}
+                          />
+                        </td>
+                        <td className="p-2 text-right">{effPrice.toFixed(2)} {form.currency || 'NOK'}</td>
+                        <td className="p-2 text-right">{effStock}</td>
+                      </tr>
+
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+      {/* __VARIANT_MEDIA_BLOCK__ */}
+      <div className="mt-6 space-y-6">
+        <BulkVariantEdit
+          variants={form.variants||[]}
+          onApply={(next)=>{ setForm({...form, variants:next}); (async()=>{ await fetch(`/api/products/${id}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({variants:next})}); })(); }}
+        />
+        <div className="admin-section">
+          <div className="admin-section-title">Variantbilder</div>
+          <VariantImages
+            variants={form.variants||[]}
+            onChange={(next)=>{ setForm({...form, variants:next}); (async()=>{ await fetch(`/api/products/${id}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({variants:next})}); })(); }}
+          />
+        </div>
+      </div>
+    
+          </div>
+        </div>
+      )}
+
+      {/* INVENTORY */}
+      {tab === 'inventory' && (
+        <div className="admin-panel mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="admin-section">
+            <label className="lb-label">Base stock</label>
+            <input
+              type="number"
+              className="lb-input"
+              defaultValue={Number(form.stock || 0)}
+              onBlur={e => update({ stock: Number(e.target.value) || 0 })}
+            />
+          </div>
+          <div className="admin-section">
+            <div className="text-xs text-neutral-500">
+              Variant uten eget lager bruker base/Multiplikator. Multiplikator = 1 betyr 1:1.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MEDIA / ATTRIBUTES / SEO / RELATIONS – fylles ut etter behov */}
+      {tab === 'media' && <div className="admin-panel mt-4">Media coming soon…</div>}
+      {tab === 'attributes' && <div className="admin-panel mt-4">Attributes coming soon…</div>}
+      {tab === 'seo' && <div className="admin-panel mt-4">SEO coming soon…</div>}
+      {tab === 'relations' && <div className="admin-panel mt-4">Relations coming soon…</div>}
+    </AdminPage>
+
+}

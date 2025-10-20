@@ -1,0 +1,28 @@
+{
+  "flags": [
+    {
+      "key": "new_checkout",
+      "name": "New Checkout",
+      "enabled": true,
+      "desc": "Enable new checkout flow"
+    },
+    {
+      "key": "ai_recos",
+      "name": "AI Recommendations",
+      "enabled": true,
+      "desc": "Personalized recos on PDP"
+    },
+    {
+      "key": "beta_admin",
+      "name": "Admin Beta",
+      "enabled": true,
+      "desc": "Expose beta modules in admin"
+    },
+    {
+      "key": "test",
+      "name": "Prøve",
+      "enabled": true,
+      "desc": "Nye flagg fungerer"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+
+import { NextResponse } from 'next/server'
+import { unwrapParams } from '@/utils/route'
+import { readDb, writeDb } from '@/utils/db'
+
+type ReturnItem={sku:string; name?:string; qty:number; price:number}
+export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){
+  const { id } = await unwrapParams(params)
+  const db=await readDb()
+  const o=(db.orders||[]).find((x:any)=>String(x.id)===String(id))
+  if(!o) return NextResponse.json({error:'not found'},{status:404})
+  return NextResponse.json({returns:o.returns||[]})
+}
+export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){
+  const { id } = await unwrapParams(params)
+  const body = await req.json().catch(()=>null) as {items:ReturnItem[]; reason?:string; note?:string; refund?:boolean}
+  if(!body || !Array.isArray(body.items) || !body.items.length) return NextResponse.json({error:'invalid payload'},{status:400})
+  const db=await readDb()
+  const i=(db.orders||[]).findIndex((x:any)=>String(x.id)===String(id))
+  if(i<0) return NextResponse.json({error:'not found'},{status:404})
+  const o=db.orders[i]
+  const amount = body.items.reduce((s,i)=> s+Number(i.price||0)*Number(i.qty||0),0)
+  const ret = { id:'RMA-'+Date.now(), createdAt:new Date().toISOString(), items:body.items, amount, currency:o.currency||'NOK', reason:body.reason||'', note:body.note||'', status: body.refund?'refunded':'requested' }
+  o.returns = Array.isArray(o.returns)?o.returns:[]
+  o.returns.push(ret)
+  if(body.refund){ o.refundedTotal = Number(o.refundedTotal||0) + amount }
+  db.orders[i]=o
+  await writeDb(db)
+  return NextResponse.json({ ok:true, return:ret })
+}

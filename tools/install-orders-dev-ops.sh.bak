@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(pwd)"
+ORDERS_DIR="$ROOT/app/api/orders"
+ORDERS_ROUTE="$ORDERS_DIR/route.ts"
+SEED_DIR="$ROOT/app/api/_debug/orders/seed"
+SEED_ROUTE="$SEED_DIR/route.ts"
+VAR_DIR="$ROOT/var"
+DEV_STORE="$VAR_DIR/orders.dev.json"
+
+echo "→ Sikrer var/-mappe og dev store…"
+mkdir -p "$VAR_DIR"
+if [ ! -f "$DEV_STORE" ]; then
+  echo '{"items":[]}' > "$DEV_STORE"
+  echo "  opprettet $DEV_STORE"
+else
+  echo "  fant $DEV_STORE"
+fi
+
+echo "→ Legger til DELETE-handler i $ORDERS_ROUTE (idempotent)…"
+if ! grep -q "export async function DELETE" "$ORDERS_ROUTE"; then
+  cat >> "$ORDERS_ROUTE" <<'TS'
+
+// --- DELETE /api/orders?id=<id> (dev only) ---
+export async function DELETE(req: Request) {
+  const { NextResponse } = await import('next/server')
+  const url = new URL(req.url)
+  const id = url.searchParams.get('id') || ''
+  if (!id) return NextResponse.json({ ok:false, error:'missing id' }, { status: 400 })
+
+  // Bare i dev/stub-modus (magento => 405)
+  if ((process.env.ORDERS_MODE || 'dev') === 'magento') {
+    return NextResponse.json({ ok:false, error:'not allowed in magento mode' }, { status: 405 })
+  }
+
+  const fs = await import('fs/promises')
+  const path = await import('path')
+  const storePath = path.join(process.cwd(), 'var', 'orders.dev.json')
+
+  try {
+    const raw = await fs.readFile(storePath, 'utf8').catch(()=>'{"items":[]}')
+    const data = JSON.parse(raw || '{"items":[]}')
+    const before = Array.isArray(data.items) ? data.items.length : 0
+    const items = (data.items || []).filter((o:any) => (o.id||o.increment_id) !== id)
+    const removed = before - items.length
+
+    await fs.writeFile(storePath, JSON.stringify({ items }, null, 2), 'utf8')
+    return removed > 0
+      ? NextResponse.json({ ok:true, removed, id }, { status: 200 })
+      : NextResponse.json({ ok:false, error:'not found', id }, { status: 404 })
+  } catch (err:any) {
+    console.error('DELETE /api/orders failed', err)
+    return NextResponse.json({ ok:false, error:'internal error' }, { status: 500 })
+  }
+}
+TS
+else
+  echo "  DELETE-handler finnes allerede – hopper over."
+fi
+
+echo "→ Lager seed-endepunkt $SEED_ROUTE…"
+mkdir -p "$SEED_DIR"
+cat > "$SEED_ROUTE" <<'TS'
+import { NextResponse } from 'next/server'
+import fs from 'fs/promises'
+import path from 'path'
+
+type Line = { sku:string; qty:number; price:number; name?:string }
+type Order = {
+  id:string
+  increment_id:string
+  status:string
+  created_at:string
+  customer?: { email?:string; firstname?:string; lastname?:string }
+  lines: Array<Line & { productId?:number|null; rowTotal:number; i:number }>
+  notes?: string
+  total:number
+  source:'local-stub'
+}
+
+const STORE = path.join(process.cwd(), 'var', 'orders.dev.json')
+
+function rndBetween(min:number, max:number){ return Math.floor(Math.random()*(max-min+1))+min }
+function pick<T>(arr:T[]){ return arr[rndBetween(0, arr.length-1)] }
+
+function makeOrder(i:number): Order {
+  const id = `ORD-${Date.now()}-${i}-${Math.random().toString(36).slice(2,7)}`
+  const qty = rndBetween(1, 4)
+  const price = [99,129,149,199,249,399][rndBetween(0,5)]
+  const sku = ['TEST','COFFEE-250','COFFEE-1000','GRINDER-X','FILTER-01'][rndBetween(0,4)]
+  const nameMap: Record<string,string> = {
+    TEST:'TEST',
+    'COFFEE-250':'Kaffe 250g',
+    'COFFEE-1000':'Kaffe 1kg',
+    'GRINDER-X':'Kvern X',
+    'FILTER-01':'Filter 01'
+  }
+  const line = { sku, qty, price, name: nameMap[sku] }
+  const rowTotal = qty*price
+
+  return {
+    id,
+    increment_id: id,
+    status: pick(['new','processing','complete','cancelled']),
+    created_at: new Date(Date.now() - rndBetween(0, 7*24*3600)*1000).toISOString(),
+    customer: {
+      email: `dev+${rndBetween(1000,9999)}@example.com`,
+      firstname: pick(['Dev','Test','Coffee','Guest']),
+      lastname: pick(['User','Person','Buyer','Guest'])
+    },
+    lines: [{ ...line, productId: null, rowTotal, i:0 }],
+    notes: pick(['','web order','manual','seed']),
+    total: rowTotal,
+    source: 'local-stub'
+  }
+}
+
+export async function GET(req: Request) {
+  // Kun i dev/stub-modus (magento => 405)
+  if ((process.env.ORDERS_MODE || 'dev') === 'magento') {
+    return NextResponse.json({ ok:false, error:'not allowed in magento mode' }, { status: 405 })
+  }
+
+  const url = new URL(req.url)
+  const n = Math.max(1, Math.min(500, parseInt(url.searchParams.get('n') || '10', 10)))
+
+  try {
+    const raw = await fs.readFile(STORE, 'utf8').catch(()=>'{"items":[]}')
+    const data = JSON.parse(raw || '{"items":[]}')
+    const items: Order[] = Array.isArray(data.items) ? data.items : []
+
+    for (let i=0;i<n;i++) items.unshift(makeOrder(i)) // legg nyest først
+    await fs.writeFile(STORE, JSON.stringify({ items }, null, 2), 'utf8')
+
+    return NextResponse.json({ ok:true, added:n, total: items.length })
+  } catch (err:any) {
+    console.error('SEED failed', err)
+    return NextResponse.json({ ok:false, error:'internal error' }, { status: 500 })
+  }
+}
+TS
+
+echo "→ Legger til npm-scripts i package.json (idempotent)…"
+if [ -f package.json ]; then
+  node - <<'JS'
+const fs = require('fs')
+const pj = JSON.parse(fs.readFileSync('package.json','utf8'))
+pj.scripts = pj.scripts || {}
+if (!pj.scripts['orders:seed']) pj.scripts['orders:seed'] = "curl -s 'http://localhost:3000/api/_debug/orders/seed?n=10' | jq ."
+if (!pj.scripts['orders:clear']) pj.scripts['orders:clear'] = "node -e \"const fs=require('fs');fs.writeFileSync('var/orders.dev.json','{\"+\"\\\"items\\\":[]\"+\"}')\" && echo 'cleared var/orders.dev.json'"
+fs.writeFileSync('package.json', JSON.stringify(pj, null, 2))
+console.log('  scripts lagt til: orders:seed, orders:clear')
+JS
+else
+  echo "  (hopper over – fant ikke package.json)"
+fi
+
+echo "✓ Ferdig. Restart dev (npm run dev) og test:"
+echo "  curl -s 'http://localhost:3000/api/_debug/orders/seed?n=5' | jq ."
+echo "  curl -s 'http://localhost:3000/api/orders?page=1&size=5' | jq '.total,(.items[0]//{})'"
+echo "  OID=$(curl -s 'http://localhost:3000/api/orders?page=1&size=1' | jq -r '.items[0].id') && curl -s -X DELETE \"http://localhost:3000/api/orders?id=$OID\" | jq ."

@@ -1,0 +1,117 @@
+/**
+ * routes-variants.js — FULL “variant heal” med write-gate.
+ * Safe by default (no-op). Slå PÅ skriving med VARIANT_WRITE_ENABLED=1 i .env.
+ */
+module.exports = (app) => {
+  const express = require('express');
+  const router = express.Router();
+
+  const WRITE_ENABLED = process.env.VARIANT_WRITE_ENABLED === '1'; // ← slå PÅ/AV
+  const j = (o) => JSON.stringify(o);
+  const base = process.env.MAGENTO_BASE || "";
+  let token = process.env.MAGENTO_TOKEN || "";
+  if (token && !/^Bearer\s/.test(token)) token = "Bearer " + token;
+
+  const fetchCompat = async (...args) => {
+    if (globalThis.fetch) return globalThis.fetch(...args);
+    const { default: f } = await import('node-fetch');
+    return f(...args);
+  };
+  const mfetch = async (path, opts = {}) => {
+    const url = `${base}${path}`;
+    const headers = {
+      'Authorization': token,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    };
+    const res = await fetchCompat(url, { ...opts, headers });
+    let data = null;
+    try { data = await res.json(); } catch(_) {}
+    return { ok: res.ok, status: res.status, data };
+  };
+
+  // === Helpers ===
+  const getProduct = async (sku, fields) => {
+    const q = fields ? `?fields=${encodeURIComponent(fields)}` : "";
+    return mfetch(`/rest/all/V1/products/${encodeURIComponent(sku)}${q}`);
+  };
+
+  const upsertSimple = async ({ sku, name, websiteId, customAttributes = {}, price = 0, visibility = 1, status = 1 }) => {
+    // Finnes? -> PUT (oppdater), ellers POST (opprett simple)
+    const exists = await getProduct(sku, 'id,sku');
+    const custom_attributes = Object.entries(customAttributes).map(([attribute_code, value]) => ({ attribute_code, value }));
+    if (exists.ok) {
+      const r = await mfetch(`/rest/V1/products/${encodeURIComponent(sku)}`, {
+        method: 'PUT',
+        body: j({
+          product: {
+            sku,
+            name,
+            price,
+            status,
+            visibility, // 1 = Not Visible Individually (typisk simple under configurable)
+            custom_attributes,
+            extension_attributes: {
+              website_ids: Array.isArray(websiteId) ? websiteId : [websiteId].filter(Boolean)
+            }
+          }
+        })
+      });
+      if (!r.ok) throw new Error(`Update simple failed: ${JSON.stringify(r.data)}`);
+      return r.data;
+    } else if (exists.status === 404) {
+      const r = await mfetch('/rest/V1/products', {
+        method: 'POST',
+        body: j({
+          product: {
+            sku,
+            name,
+            type_id: 'simple',
+            attribute_set_id: 4, // fallback; i mange M2-installasjoner er 4 = Default
+            price,
+            status,
+            visibility,
+            custom_attributes,
+            extension_attributes: {
+              website_ids: Array.isArray(websiteId) ? websiteId : [websiteId].filter(Boolean)
+            }
+          },
+          saveOptions: true
+        })
+      });
+      if (!r.ok) throw new Error(`Create simple failed: ${JSON.stringify(r.data)}`);
+      return r.data;
+    } else {
+      throw new Error(`Lookup simple failed: ${JSON.stringify(exists.data)}`);
+    }
+  };
+
+const upsertStock = async ({ sku, source_code, quantity, status }) => {
+  const q = Number(quantity||0);
+  const s = Number(status||1);
+  const wrapper = { sourceItems: [{ sku, source_code, quantity: q, status: s }] };
+  const rawArr  = [{ sku, source_code, quantity: q, status: s }];
+
+  // Try #1: MSI wrapper-shape
+  let r = await mfetch("/rest/V1/inventory/source-items", { method: "POST", body: j(wrapper) });
+  if (r.ok) return true;
+
+  // If Magento klager på missing sourceItems → prøv raw array
+  const msg = (r.data && (r.data.message || r.data)) || "";
+  if (r.status === 400 && /sourceItems/i.test(String(msg))) {
+    const r2 = await mfetch("/rest/V1/inventory/source-items", { method: "POST", body: j(rawArr) });
+    if (r2.ok) return true;
+  }
+
+  // Try #2: Legacy stock API som fallback
+  if (r.status === 404 || r.status === 400) {
+    const legacy = await mfetch("/rest/V1/products/" + encodeURIComponent(sku) + "/stockItems/1", {
+      method: "PUT",
+      body: j({ stockItem: { qty: q, is_in_stock: s === 1 ? 1 : 0 } })
+    });
+    if (legacy.ok) return true;
+    throw new Error("Legacy stock update failed: " + JSON.stringify(legacy.data));
+  }
+
+  throw new Error("Stock update failed: " + JSON.stringify(r.data));
+};

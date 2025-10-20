@@ -1,0 +1,13 @@
+export default function Home() {
+  return (
+    <main className="p-6 space-y-4">
+      <h1 className="text-xl font-semibold">Litebrygg – Admin</h1>
+      <ul className="list-disc pl-6">
+        <li><a className="underline" href="/admin/dashboard">Admin Dashboard</a></li>
+        <li><a className="underline" href="/admin/products/overview">Products → Overview</a></li>
+        <li><a className="underline" href="/api/orders/sync">/api/orders/sync (GET)</a></li>
+        <li><a className="underline" href="/api/ai/reco">/api/ai/reco (GET)</a></li>
+      </ul>
+    </main>
+  );
+}

@@ -1,0 +1,17 @@
+export BASE='https://m2-dev.litebrygg.no'
+
+# Paste the long-lived Integration Access Token here:
+export ACCESS_TOKEN='17f4lgjp35l5uwcd0pbsi09vcmcppxm3'
+
+export AUTH_ADMIN="Authorization: Bearer $ACCESS_TOKEN"
+export READ_BASE="$BASE/rest/all/V1"
+export WRITE_BASE="$BASE/rest/V1"
+
+# (Optional defaults you already use)
+export PARENT_SKU='TEST-CFG'
+export ATTR_CODE='cfg_color'
+export WEBSITE_ID='1'
+export SOURCE_CODE='default'
+
+# load static-token helper
+[ -f ./.m2-env.d/00-static-token.sh ] && . ./.m2-env.d/00-static-token.sh

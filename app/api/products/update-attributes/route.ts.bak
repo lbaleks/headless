@@ -1,0 +1,42 @@
+import { NextResponse } from 'next/server'
+import path from 'node:path'
+import { promises as fs } from 'node:fs'
+
+const DB = path.join(process.cwd(), 'var', 'products.dev.json')
+
+async function loadAll(){
+  try { return JSON.parse(await fs.readFile(DB,'utf8')) } catch { return [] }
+}
+async function saveAll(items:any[]){
+  await fs.mkdir(path.dirname(DB), {recursive:true})
+  await fs.writeFile(DB, JSON.stringify(items, null, 2), 'utf8')
+}
+
+export async function PATCH(req:Request){
+  // Persist to var/attributes/<sku>.json (idempotent)
+  try {
+    const VAR_DIR = path.join(process.cwd(), 'var', 'attributes');
+    await fs.promises.mkdir(VAR_DIR, { recursive: true });
+    const fpath = path.join(VAR_DIR, `${body.sku}.json`);
+    const cur = fs.existsSync(fpath) ? JSON.parse(await fs.promises.readFile(fpath, 'utf8')) : {};
+    const next = { ...(cur||{}), ...(body.attributes||{}) };
+    await fs.promises.writeFile(fpath, JSON.stringify(next, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('WARN: failed to persist attributes:', e?.message||e);
+  }
+
+  const body = await req.json().catch(()=> ({}))
+  const { sku, attributes } = body || {}
+  if(!sku || typeof attributes !== 'object'){
+    return NextResponse.json({ok:false, error:'Pass på body: {sku, attributes:{...}}'}, {status:400})
+  }
+  const all = await loadAll()
+  const i = all.findIndex((p:any)=> (p?.sku||'').toLowerCase()===String(sku).toLowerCase())
+  if(i>=0){
+    all[i] = { ...all[i], attributes: { ...(all[i].attributes||{}), ...attributes } }
+  } else {
+    all.push({ id: Date.now(), sku, name: sku, price: 0, status: 1, visibility: 4, source: 'local-override', attributes })
+  }
+  await saveAll(all)
+  return NextResponse.json({ok:true, sku, attributes})
+}

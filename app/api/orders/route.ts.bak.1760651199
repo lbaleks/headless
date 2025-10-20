@@ -1,0 +1,195 @@
+// Clean orders route: GET (Magento proxy) + POST (dev stub by default)
+import { NextResponse } from 'next/server'
+
+// --- ENV ---
+const M2_BASE  = process.env.MAGENTO_BASE_URL || process.env.M2_BASE_URL || ''
+const M2_TOKEN = process.env.MAGENTO_ADMIN_TOKEN || process.env.M2_ADMIN_TOKEN || ''
+// Flip to "1" to attempt real guest-cart order creation (not enabled by default)
+const M2_CREATE_ORDERS = process.env.M2_CREATE_ORDERS === '1'
+
+// --- utils ---
+function badRequest(message: string, extra?: any) {
+  return NextResponse.json({ ok:false, error: message, ...extra }, { status: 400 })
+}
+function serverError(message: string, extra?: any) {
+  return NextResponse.json({ ok:false, error: message, ...extra }, { status: 500 })
+}
+function ok(data: any, init?: number | ResponseInit) {
+  return NextResponse.json(data, init)
+}
+
+async function m2<T=any>(verb: 'GET'|'POST'|'PUT'|'PATCH'|'DELETE', path: string, body?: any): Promise<T> {
+  if (!M2_BASE || !M2_TOKEN) throw new Error('Missing MAGENTO_BASE_URL / MAGENTO_ADMIN_TOKEN')
+  const url = `${M2_BASE.replace(/\/+$/,'')}/${path.replace(/^\/+/, '')}`
+  const res = await fetch(url, {
+    method: verb,
+    headers: {
+      'Authorization': `Bearer ${M2_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: body==null ? undefined : JSON.stringify(body),
+    cache: 'no-store'
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(()=> '')
+    throw new Error(`Magento ${verb} ${url} failed: ${res.status} ${text}`)
+  }
+  return await res.json()
+}
+
+// --- GET /api/orders?page=&size=&q= ---
+export async function GET(req: Request) {
+  try {
+    if (!M2_BASE || !M2_TOKEN) {
+      // Graceful empty result if env missing (prevents 500 in UI)
+      return ok({ total: 0, items: [] })
+    }
+    const { searchParams } = new URL(req.url)
+    const page = Math.max(1, Number(searchParams.get('page') || '1'))
+    const size = Math.max(1, Math.min(200, Number(searchParams.get('size') || '50')))
+    const q = (searchParams.get('q') || '').trim()
+
+    const params: string[] = [
+      `searchCriteria[currentPage]=${page}`,
+      `searchCriteria[pageSize]=${size}`,
+      `searchCriteria[sortOrders][0][field]=created_at`,
+      `searchCriteria[sortOrders][0][direction]=DESC`,
+    ]
+
+    // Simple search: try increment_id or email
+    if (q) {
+      // OR filter requires two groups in Magento: one on increment_id, one on customer_email
+      params.push(
+        `searchCriteria[filterGroups][0][filters][0][field]=increment_id`,
+        `searchCriteria[filterGroups][0][filters][0][value]=%25${encodeURIComponent(q)}%25`,
+        `searchCriteria[filterGroups][0][filters][0][conditionType]=like`,
+        `searchCriteria[filterGroups][1][filters][0][field]=customer_email`,
+        `searchCriteria[filterGroups][1][filters][0][value]=%25${encodeURIComponent(q)}%25`,
+        `searchCriteria[filterGroups][1][filters][0][conditionType]=like`
+      )
+    }
+
+    const path = `V1/orders?${params.join('&')}`
+    const magento = await m2<any>('GET', path)
+
+    // Normalize just enough for the UI (keeps original fields too)
+    const items = (magento.items || []).map((o: any) => ({
+      id: String(o.entity_id ?? o.id ?? o.increment_id),
+      increment_id: o.increment_id,
+      status: o.status,
+      created_at: o.created_at,
+      customer_email: o.customer_email,
+      customer_firstname: o.customer_firstname || o.customer_firstname || o.customer?.firstname,
+      customer_lastname:  o.customer_lastname  || o.customer_lastname  || o.customer?.lastname,
+      total: o.grand_total,
+      currency: o.order_currency_code || o.base_currency_code,
+      raw: o, // keep full object for detail view if you need it
+    }))
+
+    return ok({ total: Number(magento.total_count || items.length || 0), items })
+  } catch (err:any) {
+  // Soft-fail: returner tom liste istedenfor 500 når Magento feiler
+  return NextResponse.json({ total: 0, items: [], warn: String((err as any)?.message ?? String(err)) })
+}
+)
+  }
+}
+
+// --- POST /api/orders  (dev stub by default) ---
+export async function POST(req: Request) {
+  try {
+    const payload = await req.json().catch(()=> ({}))
+    const customer = payload?.customer || {}
+    const lines    = Array.isArray(payload?.lines) ? payload.lines : []
+    const notes    = String(payload?.notes || '')
+
+    if (!Array.isArray(lines) || lines.length === 0) {
+      return badRequest('Mangler order lines')
+    }
+
+    if (!M2_CREATE_ORDERS) {
+      // DEV: returner en stabil stub (så UI fungerer)
+      const now = new Date()
+      const id = `ORD-${now.getTime()}`
+      const total = lines.reduce((s:number, l:any)=> s + Number(l.price || 0)*Number(l.qty||1), 0)
+      return ok({
+        id,
+        increment_id: id,
+        status: 'new',
+        created_at: now.toISOString(),
+        customer,
+        lines: lines.map((l:any, i:number)=> ({
+          sku: l.sku ?? null,
+          productId: l.productId ?? null,
+          name: l.name ?? l.sku ?? `Line ${i+1}`,
+          qty: Number(l.qty || 1),
+          price: Number(l.price || 0),
+          rowTotal: Number(l.price || 0) * Number(l.qty || 1),
+          i
+        })),
+        notes,
+        total,
+        source: 'local-stub'
+      }, { status: 201 })
+    }
+
+    // --- REAL (experimental): create order via guest cart ---
+    // Minimal flow; expects valid SKUs and flat-rate shipping/payment enabled
+    const cartId = await m2<string>('POST', 'V1/guest-carts')
+    // add items
+    for (const line of lines) {
+      await m2('POST', `V1/guest-carts/${cartId}/items`, {
+        cartItem: {
+          quote_id: cartId,
+          sku: line.sku,
+          qty: Number(line.qty || 1)
+        }
+      })
+    }
+    // set billing/shipping + shipping method
+    const addr = {
+      email: customer.email,
+      firstname: customer.firstname || 'Guest',
+      lastname:  customer.lastname  || 'User',
+      street:    customer.street    || ['Address 1'],
+      city:      customer.city      || 'City',
+      postcode:  customer.postcode  || '0001',
+      country_id:customer.country_id|| 'NO',
+      telephone: customer.telephone || '00000000',
+    }
+    const shipRes = await m2<any>('POST', `V1/guest-carts/${cartId}/shipping-information`, {
+      addressInformation: {
+        billing_address: { ...addr },
+        shipping_address:{ ...addr },
+        shipping_carrier_code: 'flatrate',
+        shipping_method_code: 'flatrate'
+      }
+    })
+    // place order (checkmo)
+    const orderId = await m2<number>('PUT', `V1/guest-carts/${cartId}/order`, {
+      paymentMethod: { method: 'checkmo' }
+    })
+    // fetch order data by id
+    const order = await m2<any>('GET', `V1/orders/${orderId}`)
+    return ok({
+      id: String(order.entity_id ?? orderId),
+      increment_id: order.increment_id,
+      status: order.status,
+      created_at: order.created_at,
+      customer: {
+        email: order.customer_email,
+        firstname: order.customer_firstname,
+        lastname: order.customer_lastname
+      },
+      lines: (order.items||[]).map((it:any,i:number)=>({
+        sku: it.sku, productId: it.product_id, name: it.name,
+        qty: it.qty_ordered, price: it.price, rowTotal: it.row_total, i
+      })),
+      notes,
+      source: 'magento'
+    }, { status: 201 })
+
+  } catch (err:any) {
+    return serverError('Kunne ikke opprette ordre', { detail: String(err?.message||err) })
+  }
+}

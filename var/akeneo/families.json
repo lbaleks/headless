@@ -1,0 +1,26 @@
+{
+  "families": [
+    {
+      "code": "default",
+      "label": "Default",
+      "attribute_groups": [
+        { "code":"basics", "label":"Basics", "attributes":["sku","name","price","status","visibility","image"] },
+        { "code":"seo",    "label":"SEO",    "attributes":["meta_title","meta_description"] }
+      ],
+      "required": {
+        "ecommerce": ["sku","name","price","status","visibility"]
+      }
+    },
+    {
+      "code": "beer",
+      "label": "Beer",
+      "attribute_groups": [
+        { "code":"basics", "label":"Basics", "attributes":["sku","name","price","status","visibility","image"] },
+        { "code":"specs",  "label":"Specs",  "attributes":["abv","volume_ml","style","origin"] }
+      ],
+      "required": {
+        "ecommerce": ["sku","name","price","status","visibility","image"]
+      }
+    }
+  ]
+}

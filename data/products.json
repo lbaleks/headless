@@ -1,0 +1,134 @@
+{
+  "products": [
+    {
+      "id": "m1",
+      "sku": "HUMLE-MOSAIC-100",
+      "name": "Mosaic Humle 100g",
+      "price": 2.7,
+      "margin": 0.3,
+      "stock": 500,
+      "status": "active",
+      "category": "Humle",
+      "images": [],
+      "variants": [
+        {
+          "id": "v1760302701321",
+          "name": "100g variant",
+          "multiplier": 1,
+          "active": true,
+          "priceDelta": 2.7,
+          "price": 3
+        },
+        {
+          "id": "v1760302721564",
+          "name": "Sekk variant",
+          "multiplier": 250,
+          "active": true,
+          "priceDelta": 599,
+          "price": 599
+        },
+        {
+          "id": "1760460692413",
+          "sku": "HUMLE-MOSAIC-100-3",
+          "name": "Mosaic Humle 100g",
+          "stock": 10
+        }
+      ],
+      "attributes": [],
+      "dimensions": {},
+      "taxClass": "15",
+      "cost": 0.7,
+      "priceTiers": [
+        {
+          "name": "100g",
+          "qtyFrom": 1,
+          "price": 3
+        },
+        {
+          "name": "25kg",
+          "qtyFrom": 250,
+          "price": 2.7
+        }
+      ],
+      "warehouses": [],
+      "categories": [
+        "Humle"
+      ],
+      "channels": [],
+      "flags": [],
+      "related": [],
+      "upsell": [],
+      "crossSell": [],
+      "packaging": {},
+      "visibility": "both",
+      "lifecycle": "standard",
+      "backorderPolicy": "deny",
+      "bundles": [],
+      "updatedAt": "2025-10-14T05:54:13.933Z",
+      "currency": "NOK"
+    },
+    {
+      "id": "m2",
+      "sku": "MALT-MARIS-1KG",
+      "name": "Maris Otter 1kg",
+      "price": 1.45,
+      "margin": 0.3,
+      "stock": 1000,
+      "status": "active",
+      "category": "Malt",
+      "images": [],
+      "variants": [
+        {
+          "id": "5e714e3b-71cc-48ae-84e0-cca1d165f2cb",
+          "name": "100g",
+          "multiplier": 2,
+          "sku": "MO-100g"
+        },
+        {
+          "id": "9613cdc1-6040-4e04-ad23-1fd094d90547",
+          "name": "Hel sek",
+          "multiplier": 250,
+          "sku": "MO sekk"
+        }
+      ],
+      "cost": 0,
+      "bundles": [],
+      "priceTiers": [],
+      "currency": "NOK",
+      "updatedAt": "2025-10-14T05:47:13.747Z"
+    },
+    {
+      "id": "123",
+      "sku": "12345",
+      "name": "Pilsner",
+      "description": "",
+      "status": "active",
+      "category": "Malt",
+      "price": 199,
+      "cost": 0,
+      "stock": 119191,
+      "currency": "NOK",
+      "images": [],
+      "variants": [
+        {
+          "id": "55be293b-19b2-490c-b062-fa583e91abf2",
+          "name": "New variant",
+          "multiplier": 250
+        }
+      ],
+      "priceTiers": [],
+      "createdAt": "2025-10-14T05:53:57.650Z",
+      "updatedAt": "2025-10-14T05:56:16.822Z"
+    }
+  ],
+  "pricingRules": [
+    {
+      "key": "base:123",
+      "type": "base",
+      "productId": "123",
+      "label": "Base",
+      "price": 199,
+      "currency": "NOK"
+    }
+  ]
+}

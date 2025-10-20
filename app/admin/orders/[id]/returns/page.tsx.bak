@@ -1,0 +1,84 @@
+'use client'
+import React,{useEffect,useMemo,useState} from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import AdminPage from '@/components/AdminPage'
+import { Card } from '@/components/ui/Card'
+
+type Item={sku:string; name?:string; qty:number; price:number}
+type Order={id:string|number; currency?:string; items?:Item[]; returns?:any[]; refundedTotal?:number}
+export default function OrderReturns(){
+  const { id } = useParams() as {id:string}
+  const r = useRouter()
+  const [o,setO]=useState<Order|null|undefined>(undefined)
+  const [sel,setSel]=useState<Record<string,number>>({})
+  const [reason,setReason]=useState(''); const [note,setNote]=useState(''); const [refund,setRefund]=useState(true)
+  const [busy,setBusy]=useState(false)
+  const load=async()=>{ const j=await fetch('/api/orders/'+id).then(r=>r.ok?r.json():null).catch(()=>null); setO(j??null) }
+  useEffect(()=>{ load() },[id])
+  const items=o?.items||[]
+  const amount=useMemo(()=>items.reduce((s,i)=>s+Number(i.price||0)*Number(sel[i.sku]||0),0),[items,sel])
+  const submit=async()=>{
+    setBusy(true)
+    try{
+      const payload={ items: items.filter(i=>Number(sel[i.sku]||0)>0).map(i=>({sku:i.sku,name:i.name,qty:Number(sel[i.sku]),price:Number(i.price)})), reason, note, refund }
+      const j=await fetch('/api/orders/'+id+'/returns',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json())
+      if(j?.ok){ (window as any).lbToast?.('Return created'); setSel({}); setReason(''); setNote(''); await load() } else { throw new Error(j?.error||'Unknown error') }
+    }catch(e:any){ console.error(e); (window as any).lbToast?.('Failed: '+(e?.message||'')) } finally{ setBusy(false) }
+  }
+  if(o===undefined) return <AdminPage title={'Order '+id+' · Returns'}><div className="p-6">Loading…</div></AdminPage>
+  if(o===null) return <AdminPage title={'Order '+id+' · Returns'}><div className="p-6 text-red-600">Order not found</div></AdminPage>
+  return (
+    <AdminPage title={'Order '+id+' · Returns'} actions={<a className="border rounded px-3 py-1.5" href={'/admin/orders/'+id}>Back</a>}>
+      <div className="grid lg:grid-cols-3 gap-6 p-4">
+        <div className="lg:col-span-2 space-y-4">
+          <Card title="Select items to return">
+            <table className="min-w-full text-sm">
+              <thead><tr><th className="p-2 text-left">SKU</th><th className="p-2 text-left">Name</th><th className="p-2 text-right">Ordered</th><th className="p-2 text-right">Price</th><th className="p-2 text-right">Return qty</th></tr></thead>
+              <tbody>
+                {items.map(i=>(
+                  <tr key={i.sku} className="odd:bg-white even:bg-gray-50">
+                    <td className="p-2 border-t font-mono">{i.sku}</td>
+                    <td className="p-2 border-t">{i.name||''}</td>
+                    <td className="p-2 border-t text-right">{i.qty}</td>
+                    <td className="p-2 border-t text-right">{Number(i.price||0).toFixed(2)} {o.currency||'NOK'}</td>
+                    <td className="p-2 border-t text-right">
+                      <input type="number" className="lb-input w-24 text-right" min={0} max={i.qty}
+                        value={sel[i.sku]||0}
+                        onChange={e=>setSel({...sel,[i.sku]:Math.max(0,Math.min(Number(i.qty),Number(e.target.value||0)))})}/>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+          <Card title="Details">
+            <div className="grid md:grid-cols-2 gap-3">
+              <label className="block"><div className="text-xs text-neutral-500 mb-1">Reason</div><input className="lb-input w-full" value={reason} onChange={e=>setReason(e.target.value)} placeholder="Damaged / wrong / defect…" /></label>
+              <label className="block"><div className="text-xs text-neutral-500 mb-1">Note</div><input className="lb-input w-full" value={note} onChange={e=>setNote(e.target.value)} placeholder="Internal note (optional)" /></label>
+              <label className="inline-flex items-center gap-2 mt-2"><input type="checkbox" checked={refund} onChange={e=>setRefund(e.target.checked)}/> Issue refund immediately</label>
+            </div>
+          </Card>
+        </div>
+        <div className="space-y-4">
+          <Card title="Summary">
+            <div className="text-sm">Refund amount</div>
+            <div className="text-2xl font-semibold">{amount.toFixed(2)} {o.currency||'NOK'}</div>
+            <button className="lb-btn lb-btn--pri mt-4 disabled:opacity-50" disabled={busy||amount<=0} onClick={submit}>Create return</button>
+          </Card>
+          <Card title="Previous returns">
+            {o.returns?.length? (
+              <div className="space-y-2">
+                {o.returns.map((r:any)=>(
+                  <div key={r.id} className="rounded border p-2 text-sm">
+                    <div className="flex justify-between"><div className="font-medium">{r.id}</div><div>{(r.amount?.toFixed?r.amount.toFixed(2):r.amount)} {r.currency||o.currency||'NOK'}</div></div>
+                    <div className="text-xs text-neutral-500">{r.status} · {new Date(r.createdAt).toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            ): <div className="text-sm text-neutral-500">No returns yet.</div>}
+          </Card>
+        </div>
+      </div>
+    </AdminPage>
+  )
+}

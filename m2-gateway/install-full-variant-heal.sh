@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+
+F="routes-variants.js"
+[ -f "$F" ] || { echo "❌ Finner ikke $F (kjør forrige installer for variants først)."; exit 1; }
+cp -n "$F" "${F}.bak.$(date +%s)" || true
+
+cat > "$F" <<'JS'
+/**
+ * routes-variants.js — FULL “variant heal” med write-gate.
+ * Safe by default (no-op). Slå PÅ skriving med VARIANT_WRITE_ENABLED=1 i .env.
+ */
+module.exports = (app) => {
+  const express = require('express');
+  const router = express.Router();
+
+  const WRITE_ENABLED = process.env.VARIANT_WRITE_ENABLED === '1'; // ← slå PÅ/AV
+  const j = (o) => JSON.stringify(o);
+  const base = process.env.MAGENTO_BASE || "";
+  let token = process.env.MAGENTO_TOKEN || "";
+  if (token && !/^Bearer\s/.test(token)) token = "Bearer " + token;
+
+  const fetchCompat = async (...args) => {
+    if (globalThis.fetch) return globalThis.fetch(...args);
+    const { default: f } = await import('node-fetch');
+    return f(...args);
+  };
+  const mfetch = async (path, opts = {}) => {
+    const url = `${base}${path}`;
+    const headers = {
+      'Authorization': token,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    };
+    const res = await fetchCompat(url, { ...opts, headers });
+    let data = null;
+    try { data = await res.json(); } catch(_) {}
+    return { ok: res.ok, status: res.status, data };
+  };
+
+  // === Helpers ===
+  const getProduct = async (sku, fields) => {
+    const q = fields ? `?fields=${encodeURIComponent(fields)}` : "";
+    return mfetch(`/rest/all/V1/products/${encodeURIComponent(sku)}${q}`);
+  };
+
+  const upsertSimple = async ({ sku, name, websiteId, customAttributes = {}, price = 0, visibility = 1, status = 1 }) => {
+    // Finnes? -> PUT (oppdater), ellers POST (opprett simple)
+    const exists = await getProduct(sku, 'id,sku');
+    const custom_attributes = Object.entries(customAttributes).map(([attribute_code, value]) => ({ attribute_code, value }));
+    if (exists.ok) {
+      const r = await mfetch(`/rest/V1/products/${encodeURIComponent(sku)}`, {
+        method: 'PUT',
+        body: j({
+          product: {
+            sku,
+            name,
+            price,
+            status,
+            visibility, // 1 = Not Visible Individually (typisk simple under configurable)
+            custom_attributes,
+            extension_attributes: {
+              website_ids: Array.isArray(websiteId) ? websiteId : [websiteId].filter(Boolean)
+            }
+          }
+        })
+      });
+      if (!r.ok) throw new Error(`Update simple failed: ${JSON.stringify(r.data)}`);
+      return r.data;
+    } else if (exists.status === 404) {
+      const r = await mfetch('/rest/V1/products', {
+        method: 'POST',
+        body: j({
+          product: {
+            sku,
+            name,
+            type_id: 'simple',
+            attribute_set_id: 4, // fallback; i mange M2-installasjoner er 4 = Default
+            price,
+            status,
+            visibility,
+            custom_attributes,
+            extension_attributes: {
+              website_ids: Array.isArray(websiteId) ? websiteId : [websiteId].filter(Boolean)
+            }
+          },
+          saveOptions: true
+        })
+      });
+      if (!r.ok) throw new Error(`Create simple failed: ${JSON.stringify(r.data)}`);
+      return r.data;
+    } else {
+      throw new Error(`Lookup simple failed: ${JSON.stringify(exists.data)}`);
+    }
+  };
+
+  const upsertStock = async ({ sku, source_code, quantity, status }) => {
+    // MSI bulk save
+    const r = await mfetch('/rest/V1/inventory/source-items', {
+      method: 'POST',
+      body: j([{ sku, source_code, quantity: Number(quantity||0), status: Number(status||1) }]),
+    });
+    if (!r.ok) throw new Error(`Stock update failed: ${JSON.stringify(r.data)}`);
+    return true;
+  };
+
+  const attachChild = async ({ parentSku, sku }) => {
+    // POST child; 400 "already" er ok
+    const r = await mfetch(`/rest/V1/configurable-products/${encodeURIComponent(parentSku)}/child`, {
+      method: 'POST',
+      body: j({ childSku: sku }),
+    });
+    if (r.ok) return true;
+    const msg = JSON.stringify(r.data||{});
+    if (/already/i.test(msg)) return true;
+    throw new Error(`Attach failed: ${msg}`);
+  };
+
+  // Prøv miljø-spesifikk modul først
+  const tryModuleHeal = async (body) => {
+    try {
+      const r = await mfetch(`/rest/V1/litebrygg/ops/variant/heal`, { method:'POST', body: j(body) });
+      return r;
+    } catch (e) {
+      return { ok:false, status:0, data:String(e) };
+    }
+  };
+
+  router.post('/ops/variant/heal', async (req, res) => {
+    const body = req.body || {};
+    const { parentSku, sku, cfgAttr, cfgValue, label, websiteId, stock } = body;
+
+    try {
+      // 1) Modul først (bruk kun hvis 2xx)
+      const probe = await tryModuleHeal(body);
+      if (probe && probe.ok) {
+        return res.json({ ok:true, via:'module', ...(probe.data||{}) });
+      }
+
+      // 2) Safe fallback
+      if (!WRITE_ENABLED) {
+        return res.json({
+          ok: true, fallback: true, via:'gateway-noop',
+          sku, parentSku, cfgAttr, cfgValue, label, websiteId
+        });
+      }
+
+      // 3) Full gateway-heal
+      const name = label || sku;
+      // Sett cfgAttr på simple:
+      const customAttributes = {};
+      if (cfgAttr && (cfgValue ?? null) !== null) {
+        customAttributes[cfgAttr] = String(cfgValue);
+      }
+      // upsert simple (visibility 1; website assignment)
+      await upsertSimple({
+        sku,
+        name,
+        websiteId: websiteId || 1,
+        customAttributes,
+        price: 0,
+        visibility: 1,
+        status: 1
+      });
+
+      // lager (om gitt)
+      if (stock && stock.source_code) {
+        await upsertStock({
+          sku,
+          source_code: stock.source_code,
+          quantity: Number(stock.quantity ?? 0),
+          status: Number(stock.status ?? 1)
+        });
+      }
+
+      // attach til parent (idempotent-ish)
+      await attachChild({ parentSku, sku });
+
+      return res.json({
+        ok: true, via:'gateway-write',
+        sku, parentSku, cfgAttr, cfgValue, label, websiteId
+      });
+
+    } catch (err) {
+      const msg = (err && err.message) || String(err);
+      return res.status(500).json({ ok:false, error:{ message: msg } });
+    }
+  });
+
+  app.use(router);
+};
+JS
+
+echo "✅ Skrev $F (full heal + write-gate)."
+
+# Sørg for at routes-variants er koblet i server.js (idempotent)
+if ! grep -q "routes-variants" server.js; then
+  perl -0777 -pe 's|(app\.listen\(.*)|require("./routes-variants")(app);\n$1|s' -i server.js
+  echo "✅ Patcha server.js (koblet routes-variants)."
+fi
+
+echo "ℹ️ Slå på skriving med:  echo VARIANT_WRITE_ENABLED=1 >> .env"
+echo "⚠️ Husk at token må ha rettigheter til produkter, lager (MSI) og configurable."

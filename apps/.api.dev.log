@@ -1,0 +1,13 @@
+
+> @litebrygg/api@0.1.0 start
+> node src/server.js
+
+file:///Users/litebrygg/Documents/M2/apps/api/src/server.js:61
+await app.register(adminUi)
+                   ^
+
+ReferenceError: adminUi is not defined
+    at file:///Users/litebrygg/Documents/M2/apps/api/src/server.js:61:20
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+Node.js v20.19.4

@@ -1,0 +1,15 @@
+module.exports={
+  "presets": [
+    [
+      "@babel/preset-typescript",
+      {
+        "allExtensions": true,
+        "isTSX": true,
+        "allowDeclareFields": true
+      }
+    ]
+  ],
+  "plugins": [
+    "babel-plugin-react-compiler"
+  ]
+}

@@ -1,0 +1,175 @@
+"use client";
+import { useEffect, useMemo, useState } from "react";
+
+async function parseJsonSafe(r: Response){
+  let txt = "";
+  try{
+    txt = await r.text();
+    try { return JSON.parse(txt); }
+    catch { return { ok:false, error:"non_json_response", raw:(txt||"").slice(0,600) }; }
+  }catch(e:any){
+    return { ok:false, error:"fetch_failed", note:(e?.message||String(e)) };
+  }
+}
+
+type Draft = {
+  name: string;
+  description?: string;
+  attributes?: Record<string, any>;
+  price?: number;
+  stock?: number;
+  sku?: string;
+  synced?: boolean;
+  magentoId?: number;
+  syncedAt?: string;
+  error?: string | null;
+};
+
+
+function postStock(sku: string, qty: number, sourceCode: string = "default"){
+  try{
+    if (!sku || typeof qty !== "number" || !isFinite(qty)) return;
+    fetch("/api/ops/stock", {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ sku, qty, sourceCode })
+    }).catch(()=>{});
+  }catch{}
+}
+
+
+function postPrice(sku: string, price: number, store_id: number = 0){
+  try{
+    if (!sku || typeof price !== "number" || !isFinite(price)) return;
+    fetch("/api/ops/price", {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ prices: [{ sku, price, store_id }] })
+    }).catch(()=>{});
+  }catch{}
+}
+
+export default function ProductsOverview() {
+  const [rows, setRows] = useState<Draft[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [log, setLog] = useState<string>("");
+
+  
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/drafts/list", { cache: "no-store" });
+      const j = await parseJsonSafe(r);
+      if (j.ok) setRows(j.items || []);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function syncOne(i: number) {
+    setLog((l) => `Synker rad ${i}…\n` + l);
+    const r = await fetch("/api/drafts/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idx: i }),
+    });
+    let j: any = null;
+    try { j = await parseJsonSafe(r); } catch { j = { ok: false, error: "non_json_response" }; }
+    if (j?.ok) {
+      setRows((cur) => cur.map((x, idx) => (idx === i ? j.item : x)));
+        try {
+          const sku   = (j?.item?.sku) ?? (r?.sku ?? r?.name);
+          const qty   = (typeof (j?.item?.stock) === "number" ? j.item.stock : (typeof r?.stock === "number" ? r.stock : undefined));
+          const price = (typeof (j?.item?.price) === "number" ? j.item.price : (typeof r?.price === "number" ? r.price : undefined));
+          if (sku && typeof qty === "number")   { postStock(sku, qty); }
+          if (sku && typeof price === "number") { postPrice(sku, price); }
+        } catch {}
+
+      setLog((l) => `✅ OK rad ${i} (${j.item?.magentoId ?? "uten ID"})\n` + l);
+    } else {
+      setLog((l) => `❌ Feil rad ${i}: ${j?.error || r.statusText}\n` + l);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+  const any = useMemo(() => rows.length > 0, [rows]);
+
+  return (
+    <div className="p-6 space-y-4">
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-bold">📦 AI-utkast → Magento</h1>
+        <button onClick={load} className="px-3 py-2 rounded border hover:bg-black/5">↻ Oppdater</button>
+      </div>
+
+      {loading && <div>Laster…</div>}
+      {!loading && !any && <div className="opacity-70">Ingen utkast funnet ennå.</div>}
+
+      {any && (
+        <div className="overflow-x-auto">
+          <table className="min-w-[720px] w-full border rounded">
+            <thead className="bg-black/5 dark:bg-white/5 text-sm">
+              <tr>
+                <th className="text-left p-2">Navn</th>
+                <th className="text-left p-2">SKU</th>
+                <th className="text-left p-2">Pris</th>
+                <th className="text-left p-2">Lager</th>
+                <th className="text-left p-2">Status</th>
+                <th className="text-left p-2">Magento ID</th>
+                <th className="text-left p-2">Sist synket</th>
+                <th className="text-left p-2">Aksjon</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {rows.map((r, i) => (
+                <tr key={i} className="align-top">
+                  <td className="p-2">
+                    <div className="font-medium">{ r?.name ?? r?.sku ?? "—" }</div>
+                    {!!(r && typeof r?.description === "string" && r?.description.trim()) && (
+                      <div className="text-xs opacity-70 line-clamp-2">{r?.description}</div>
+                    )}
+                  </td>
+                  <td className="p-2 text-sm">{ r?.sku ? r.sku : <span className="opacity-50">auto</span> }</td>
+                  <td className="p-2 text-sm">
+                    {typeof r.price === "number" ? `${r.price}` : <span className="opacity-50">–</span>}
+                  </td>
+                  <td className="p-2 text-sm">
+                    {typeof r.stock === "number" ? `${r.stock}` : <span className="opacity-50">–</span>}
+                  </td>
+                  <td className="p-2 text-sm">
+                    {r.synced ? (
+                      <span className="px-2 py-1 rounded bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">Synket</span>
+                    ) : r.error ? (
+                      <span className="px-2 py-1 rounded bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300" title={r.error}>Feil</span>
+                    ) : (
+                      <span className="px-2 py-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">Utsynket</span>
+                    )}
+                  </td>
+                  <td className="p-2 text-sm">{r.magentoId ?? <span className="opacity-50">–</span>}</td>
+                  <td className="p-2 text-xs">
+                    {r.syncedAt ? new Date(r.syncedAt).toLocaleString() : <span className="opacity-50">–</span>}
+                  </td>
+                  <td className="p-2">
+                    <button
+                      className="px-3 py-1 rounded border hover:bg-black/5 text-sm"
+                      onClick={() => syncOne(i)}
+                    >
+                      Sync nå
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div>
+        <div className="text-sm opacity-70 mb-2">Logg</div>
+        <pre className="text-xs bg-black/5 dark:bg-white/5 p-3 rounded max-h-64 overflow-auto whitespace-pre-wrap">
+{log}
+        </pre>
+      </div>
+    </div>
+  );
+}

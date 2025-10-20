@@ -1,0 +1,10 @@
+{
+  "code": "default",
+  "label": "Default family",
+  "required_attributes": ["sku","name","price","status","visibility"],
+  "optional_attributes": ["image","tax_class_id"],
+  "channels": [
+    { "code": "web", "locales": ["nb_NO","en_GB"] },
+    { "code": "pos", "locales": ["nb_NO"] }
+  ]
+}

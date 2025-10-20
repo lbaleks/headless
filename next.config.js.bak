@@ -1,0 +1,15 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  experimental: {
+    reactCompiler: true,
+  },
+  webpack: (config, { dev }) => {
+    if (dev) {
+      // Unngå filsystem-cache som gir ENOENT når .next ryddes under kjøring
+      config.cache = { type: 'memory' };
+    }
+    return config;
+  },
+};
+module.exports = nextConfig;

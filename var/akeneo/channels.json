@@ -1,0 +1,9 @@
+{
+  "channels": [
+    { "code": "ecommerce", "label": "E-commerce", "locales": ["en_US","nb_NO"] }
+  ],
+  "locales": [
+    { "code": "en_US", "label": "English (US)" },
+    { "code": "nb_NO", "label": "Norsk (Bokmål)" }
+  ]
+}

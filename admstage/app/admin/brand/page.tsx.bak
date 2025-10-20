@@ -1,0 +1,31 @@
+"use client";
+import { useState } from "react";
+
+export default function BrandPage() {
+  const [msg, setMsg] = useState<string>("");
+
+  async function upload(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    setMsg("Laster opp…");
+    const r = await fetch("/api/brand/logo", { method:"POST", body: fd });
+    const j = await r.json();
+    setMsg(j.ok ? "✅ Lagret logo. Oppdater siden/clear cache om du ikke ser den straks." : ("❌ " + (j.error||"Ukjent feil")));
+  }
+
+  return (
+    <div className="p-6 space-y-4">
+      <h1 className="text-2xl font-bold">🎨 Branding</h1>
+      <p>Last opp logo (PNG). Fila lagres som <code>/public/brand/logo.png</code>.</p>
+      <form onSubmit={upload} className="flex items-center gap-3">
+        <input type="file" name="file" accept="image/png,image/*" className="border rounded px-3 py-2" />
+        <button className="px-3 py-2 rounded border hover:bg-black/5">Last opp</button>
+      </form>
+      <div className="text-sm opacity-70">{msg}</div>
+      <div className="mt-4">
+        <div className="text-sm mb-2">Forhåndsvisning:</div>
+        <img src="/brand/logo.png" alt="Logo" className="h-10 w-auto border rounded p-1 bg-white dark:bg-neutral-900" />
+      </div>
+    </div>
+  );
+}

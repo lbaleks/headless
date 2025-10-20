@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source ./.m2-env
+source ./.m2-lib.sh
+: "${PARENT_SKU:=TEST-CFG}"
+: "${ATTR_CODE:=cfg_color}"
+
+echo "== Variant Auto-Healer =="
+echo "BASE=$BASE  PARENT=$PARENT_SKU  ATTR=$ATTR_CODE  WEBSITE=${WEBSITE_ID:-?}"
+
+# Finn attribute-id + options
+ATTR=$(curl -sS -H "$AUTH_ADMIN" "$READ_BASE/products/attributes/$ATTR_CODE")
+CFG_ATTR_ID=$(jq -r '.attribute_id' <<<"$ATTR")
+[ -z "$CFG_ATTR_ID" ] || [ "$CFG_ATTR_ID" = "null" ] && { echo "Fant ikke attribute $ATTR_CODE"; exit 1; }
+OPTS=$(curl -sS -H "$AUTH_ADMIN" "$READ_BASE/products/attributes/$ATTR_CODE/options" | jq -c 'map(select(.value!=""))')
+
+# Finn eksisterende children
+CHILDREN=$(curl -sS -H "$AUTH_ADMIN" "$READ_BASE/configurable-products/$PARENT_SKU/children" | jq -r '.[].sku')
+
+# Sørg for at parent har configurable option
+PARENT=$(curl -sS -H "$AUTH_ADMIN" "$READ_BASE/products/$PARENT_SKU?fields=extension_attributes")
+OPT_ID=$(jq -r --arg id "$CFG_ATTR_ID" '.extension_attributes.configurable_product_options[]? | select(.attribute_id==$id) | .id' <<<"$PARENT")
+if [ -z "$OPT_ID" ]; then
+  # opprett tom option med alle verdier
+  VALUES=$(jq -c 'map({value_index:.value|tonumber})' <<<"$OPTS")
+  do_write POST "$WRITE_BASE/configurable-products/$PARENT_SKU/options" \
+    "$(jq -c --arg id "$CFG_ATTR_ID" --arg l "$ATTR_CODE" --argjson vals "$VALUES" '{option:{attribute_id:$id,label:$l,position:0,is_use_default:true,values:$vals}}')" >/dev/null
+else
+  CURR=$(jq -c --arg id "$CFG_ATTR_ID" '.extension_attributes.configurable_product_options[] | select(.attribute_id==$id) | .values | map(.value_index)' <<<"$PARENT")
+  ALL=$(jq -c 'map(.value|tonumber)' <<<"$OPTS")
+  NEWVALS=$(jq -c --argjson a "$ALL" --argjson c "$CURR" '((c+a)|unique) | map({value_index:.})' <<<"{}")
+  do_write PUT "$WRITE_BASE/configurable-products/$PARENT_SKU/options/$OPT_ID" \
+    "$(jq -c --argjson oid "$OPT_ID" --arg id "$CFG_ATTR_ID" --arg l "$ATTR_CODE" --argjson vals "$NEWVALS" '{option:{id:$oid,attribute_id:$id,label:$l,position:0,is_use_default:true,values:$vals}}')" >/dev/null
+fi
+
+echo "✅ Parent oppdatert."
+curl -sS -H "$AUTH_ADMIN" "$READ_BASE/configurable-products/$PARENT_SKU/children" | jq -c 'map(.sku)'

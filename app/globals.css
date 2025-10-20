@@ -1,0 +1,333 @@
+@import "tailwindcss";
+@reference "tailwindcss";
+
+:root { color-scheme: light; }
+html, body { height: 100%; }
+body { @apply text-slate-900 bg-white antialiased bg-slate-50; }
+a { @apply underline underline-offset-2; }
+.card { @apply rounded-2xl border border-slate-200 bg-white p-4 shadow-sm; }
+.btn  { @apply px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-black/5 disabled:opacity-60; }
+.kpi  { @apply text-2xl font-semibold; }
+.sub  { @apply text-xs opacity-60; }
+
+
+/* ===== LiteBrygg Admin Polish Tokens ===== */
+.lb-admin table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.lb-admin thead th { font-weight: 600; color: #0a0a0a; }
+.lb-admin tbody tr:hover { background-color: #fafafa; }
+.lb-admin td, .lb-admin th { border-bottom: 1px solid #ececec; }
+.lb-admin .no-scrollbar::-webkit-scrollbar { display: none; }
+.lb-admin .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ===== LiteBrygg Admin — polish ===== */
+.lb-admin table{width:100%;border-collapse:separate;border-spacing:0}
+.lb-admin thead th{font-weight:600;color:#0a0a0a}
+.lb-admin tbody tr:hover{background:#fafafa}
+.lb-admin td,.lb-admin th{border-bottom:1px solid #ececec}
+.lb-admin .no-scrollbar::-webkit-scrollbar{display:none}
+.lb-admin .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+
+/* Dock & helpers */
+.lb-admin .no-scrollbar::-webkit-scrollbar{display:none}
+.lb-admin .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+
+/* === Enterprise polish (Omnium/SFCC vibe) === */
+:root{
+  --lb-card-bg:#fff; --lb-card-br:#e7e7e9; --lb-card-sh:0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.04);
+  --lb-muted:#6b7280; --lb-title:#0b0b0c; --lb-soft:#f7f7f8; --lb-pill:#eef2ff;
+}
+.lb-card{background:var(--lb-card-bg);border:1px solid var(--lb-card-br);border-radius:16px;box-shadow:var(--lb-card-sh)}
+.lb-card .lb-card-h{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--lb-card-br);background:linear-gradient(180deg,#fafafa,transparent)}
+.lb-card .lb-card-t{font-weight:600;color:var(--lb-title);}
+.lb-card .lb-card-b{padding:16px}
+.lb-stat{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border:1px solid var(--lb-card-br);border-radius:999px;background:var(--lb-pill);font-size:12px}
+.lb-muted{color:var(--lb-muted)}
+/* Tables */
+.lb-table{width:100%;border-collapse:separate;border-spacing:0}
+.lb-table thead th{font-weight:600;color:#101114;background:#f8f8f9}
+.lb-table td,.lb-table th{border-bottom:1px solid #ececec}
+.lb-table tbody tr:hover{background:#fafafa}
+/* Inputs */
+.lb-input{border:1px solid var(--lb-card-br);border-radius:10px;padding:8px 10px}
+.lb-btn{border:1px solid var(--lb-card-br);border-radius:10px;padding:8px 12px;background:#fff}
+.lb-btn--pri{background:#111;color:#fff;border-color:#111}
+/* Dock */
+.lb-dock{backdrop-filter:saturate(1.2) blur(6px);}
+
+/* === DockBar polish === */
+.lb-dock{ backdrop-filter:saturate(1.2) blur(6px); }
+.lb-dock .no-scrollbar::-webkit-scrollbar{ display:none }
+.lb-dock .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none }
+
+
+/* === Dock fix: topp-posisjon og overstyr bunn === */
+.lb-dock{ bottom:auto !important; top:56px !important; }
+.lb-dock-fix-top{ position:fixed; top:56px; left:0; right:0; z-index:40; }
+
+
+/* === Dock top override === */
+.lb-dock{ position:fixed !important; top:56px !important; bottom:auto !important; left:0; right:0; z-index:70 !important; }
+/* Skjul generiske bunn-docker som kan komme fra eldre komponenter */
+.dock-bottom, .admin-dock-bottom, [data-dock-bottom], .lb-dock-bottom { display:none !important; }
+/* Scrollbar-hider */
+.no-scrollbar::-webkit-scrollbar{ display:none }
+.no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none }
+
+
+/* === Dock override === */
+.lb-dock {
+  position: fixed !important;
+  top: 56px !important;
+  bottom: auto !important;
+  left: 0;
+  right: 0;
+  z-index: 90 !important;
+}
+.dock-bottom, .lb-dock-bottom, .admin-dock-bottom, [data-dock-bottom] {
+  display: none !important;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+
+/* === Force-hide bottom docks === */
+.dock-bottom, .lb-dock-bottom, .admin-dock-bottom, [data-dock-bottom], .DockBottom, .dock--bottom { display:none !important; }
+/* Vår DockBar holdes øverst */
+.lb-dock{ position:fixed !important; top:56px !important; bottom:auto !important; left:0; right:0; z-index:90 !important; }
+
+
+/* === Force-hide bottom docks (headless mode) === */
+.dock-bottom, .lb-dock-bottom, .admin-dock-bottom, [data-dock-bottom], .DockBottom, .dock--bottom { display:none !important; }
+/* Vår DockBar holdes øverst */
+.lb-dock{ position:fixed !important; top:56px !important; bottom:auto !important; left:0; right:0; z-index:90 !important; }
+
+
+/* ===== Dock vars / overrides ===== */
+:root{
+  /* Høyden på toppnavigasjonen din (for eksempel header i AdminPage) */
+  --lb-top-nav-h: 56px;
+  /* Dynamisk satt av DockBar via ResizeObserver */
+  --lb-dock-h: 44px;
+}
+/* Flytt eventuelle eldre bunn-docker av veien */
+.dock-bottom, .lb-dock-bottom, .admin-dock-bottom, [data-dock-bottom], .DockBottom, .dock--bottom {
+  display: none !important;
+}
+/* Scrollbar-skjuler */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* === Enterprise polish tokens v2 === */
+:root{ --lb-top-nav-h:56px; --lb-dock-h:44px; }
+.lb-input{ border:1px solid #e5e5e5; border-radius:.5rem; padding:.375rem .5rem; background:#fff; }
+.lb-table th,.lb-table td{ border-top:1px solid #eee; }
+
+/* Dock layout: legg DockBar øverst, skjul evt duplikat i bunn */
+.lb-dock{ position:fixed; inset-inline:0; top:var(--lb-top-nav-h); z-index:40; background:rgba(255,255,255,.92); backdrop-filter:saturate(1.2) blur(6px); border-bottom:1px solid #eaeaea; }
+/* Hvis det eksisterer en eldre dock senere i DOM, skjul den */
+.lb-dock:last-of-type:not(:first-of-type){ display:none; }
+
+/* Skyv innhold under docken uten å endre sider: neste søsken får topp-margin */
+.lb-dock + *{ margin-top: calc(var(--lb-dock-h) + 12px); }
+
+/* === AdminNav polish === */
+.lb-adminnav .no-scrollbar::-webkit-scrollbar{display:none}
+.lb-adminnav .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+
+/* Sørg for at hovedinnholdet ikke havner under nav/dock (fallback) */
+@media (min-width: 768px){
+  .admin-shell{ padding-top: .25rem; }
+}
+
+
+/* enterprise-polish */
+.lb-input{border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;background:#fff}
+.lb-table th,.lb-table td{border-top:1px solid #eee;padding:8px 12px}
+
+
+/* dock pad */
+:root{ --lb-dock-pad: 64px; }
+main, .lb-main { padding-top: var(--lb-dock-pad); }
+
+/* ========== NORCE/Omnium-ish sidebar ========== */
+:root{ --lb-side-w: 240px; --lb-top-nav-h: 56px; --lb-dock-h: 48px; }
+.lb-admin-wrap{ display:flex; }
+.lb-admin-main{ margin-left: var(--lb-side-w); padding: 16px; min-height: 100vh; background: #f8fafc; }
+.lb-side{ width: var(--lb-side-w); background:#0f172a; color:#cbd5e1; }
+.lb-side-inner{ position: sticky; top:0; height:100vh; padding: 12px 8px; }
+.lb-brand{ font-weight:600; letter-spacing:.5px; color:#fff; padding: 12px 10px 16px; }
+.lb-menu{ display:flex; flex-direction:column; gap:8px; }
+.lb-group{ }
+.lb-group-head{ display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; cursor:pointer; user-select:none; color:#cbd5e1; }
+.lb-group-head.active{ background:#0b1222; color:#fff; }
+.lb-children{ margin-left: 8px; border-left:1px solid rgba(255,255,255,.08); padding-left:8px; }
+.lb-leaf{ padding:8px 10px; border-radius:8px; color:#cbd5e1; }
+.lb-leaf.active{ background:#1e293b; color:#fff; }
+.lb-group-head:hover, .lb-leaf:hover{ background:#111827; color:#fff; }
+@media (max-width: 1023px){
+  .lb-admin-main{ margin-left: 0; }
+  .lb-side{ position: fixed; transform: translateX(0); z-index: 30; }
+}
+
+/* lb-side polish v2 */
+:root{ --lb-side-w: 240px; --lb-dock-h: 48px; --lb-side-z: 40; --lb-dock-z: 30; }
+.lb-admin-wrap{ display:flex; }
+.lb-admin-main{
+  margin-left: var(--lb-side-w);
+  padding: 16px;
+  min-height: 100vh;
+  width: calc(100% - var(--lb-side-w));
+  background: #f8fafc;
+}
+.lb-side{
+  width: var(--lb-side-w);
+  background:#0f172a;
+  color:#cbd5e1;
+  z-index: var(--lb-side-z);
+}
+.lb-side-inner{ position: sticky; top:0; height:100vh; padding: 12px 8px; }
+.lb-brand{ font-weight:700; letter-spacing:.3px; color:#fff; padding: 12px 10px 16px; font-size:14px; opacity:.9 }
+.lb-menu{ display:flex; flex-direction:column; gap:6px; }
+.lb-group{ }
+.lb-group-head{
+  display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; cursor:pointer; user-select:none;
+  color:#cbd5e1; transition:background .15s ease,color .15s ease;
+}
+.lb-group-head.active{ background:#0b1222; color:#fff; }
+.lb-group-head:hover{ background:#111827; color:#fff; }
+.lb-children{ margin-left: 8px; border-left:1px solid rgba(255,255,255,.08); padding-left:8px; }
+.lb-leaf{
+  padding:8px 10px; border-radius:8px; color:#cbd5e1; transition:background .15s ease,color .15s ease;
+}
+.lb-leaf:hover{ background:#111827; color:#fff; }
+.lb-leaf.active{ background:#1e293b; color:#fff; }
+@media (max-width:1023px){
+  .lb-admin-main{ margin-left:0; width:100%; }
+  .lb-side{ position:fixed; left:0; top:0; bottom:0; }
+}
+/* end lb-side polish v2 */
+
+/* lb-side polish v3 */
+:root{
+  --lb-side-w: 240px;
+  --lb-dock-h: 48px;     /* høyden på sticky/dock */
+  --lb-dock-z: 20;       /* dokken skal IKKE over menyen */
+  --lb-side-z: 40;       /* menyen hellig – alltid på topp */
+}
+.lb-admin-wrap{ display:flex; }
+.lb-side{ width:var(--lb-side-w); background:#0f172a; color:#cbd5e1; z-index:var(--lb-side-z); }
+.lb-side-inner{ position:sticky; top:0; height:100vh; padding:12px 8px; }
+.lb-admin-main{
+  margin-left:var(--lb-side-w);
+  width:calc(100% - var(--lb-side-w));
+  min-height:100vh;
+  padding:16px;
+  background:#f8fafc;
+  padding-top:calc(var(--lb-dock-h) + 12px); /* hovedvindu får spacer for dock */
+}
+/* Hvis dokken er global (pos:sticky; top:0), sørg for lavere z-index enn sidebar */
+.lb-dock, [data-lb-dock="true"]{ z-index:var(--lb-dock-z) !important; }
+
+/* NORCE/Omnium-ish nav states */
+.lb-brand{ font-weight:700; color:#fff; padding:12px 10px 16px; font-size:14px; letter-spacing:.3px; opacity:.9 }
+.lb-menu{ display:flex; flex-direction:column; gap:6px; }
+.lb-group-head{ display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; color:#cbd5e1; cursor:pointer; transition:background .15s,color .15s }
+.lb-group-head:hover{ background:#111827; color:#fff }
+.lb-group-head.active{ background:#0b1222; color:#fff }
+.lb-children{ margin-left:8px; border-left:1px solid rgba(255,255,255,.08); padding-left:8px }
+.lb-leaf{ padding:8px 10px; border-radius:8px; color:#cbd5e1; transition:background .15s,color .15s }
+.lb-leaf:hover{ background:#111827; color:#fff }
+.lb-leaf.active{ background:#1e293b; color:#fff }
+
+@media (max-width: 1023px){
+  .lb-admin-main{ margin-left:0; width:100%; }
+  .lb-side{ position:fixed; inset:0 auto 0 0; }
+}
+/* lb-side polish v3 END */
+
+/* lb-dock scope v4 */
+:root{
+  --lb-side-w: 240px;
+  --lb-side-z: 40;   /* sidebar hellig */
+  --lb-dock-z: 20;   /* dock under sidebar */
+  --lb-dock-h: 48px;
+}
+.lb-admin-wrap{ display:flex; }
+.lb-side{ width:var(--lb-side-w); z-index:var(--lb-side-z); background:#0f172a; color:#cbd5e1; }
+.lb-side-inner{ position:sticky; top:0; height:100vh; padding:12px 8px; }
+.lb-admin-main{
+  margin-left:var(--lb-side-w);
+  width:calc(100% - var(--lb-side-w));
+  min-height:100vh;
+  background:#f8fafc;
+  padding:16px;
+  padding-top:calc(var(--lb-dock-h) + 12px); /* plass til dock i main */
+}
+/* Viktig: kun dock inni main er sticky/binder bredde til main */
+.lb-admin-main .lb-dock,[data-lb-dock="true"]{
+  position:sticky;
+  top:0;
+  z-index:var(--lb-dock-z);
+}
+
+/* NORCE/Omnium-ish hover/active */
+.lb-leaf{ padding:8px 10px; border-radius:8px; color:#cbd5e1; transition:background .15s,color .15s }
+.lb-leaf:hover{ background:#111827; color:#fff }
+.lb-leaf.active{ background:#1e293b; color:#fff }
+
+@media (max-width:1023px){
+  .lb-admin-main{ margin-left:0; width:100%; }
+}
+/* lb-dock scope v4 END */
+
+/* lb layout v5 — NORCE/Omnium-ish */
+:root{
+  --lb-side-w: 248px;
+  --lb-side-z: 40;   /* sidebar is holy */
+  --lb-dock-z: 20;   /* dock sits under sidebar */
+  --lb-dock-h: 52px;
+}
+.lb-admin-wrap{ display:flex; min-height:100vh; }
+.lb-side{ position:relative; width:var(--lb-side-w); z-index:var(--lb-side-z); background:#0b1220; color:#cbd5e1; box-shadow: inset -1px 0 0 #0f1a2b; }
+.lb-side-inner{ position:sticky; top:0; height:100vh; padding:14px 10px; }
+.lb-brand{ padding:6px 8px; }
+.lb-group{ margin-top:14px; }
+.lb-group-label{ font-size:10px; letter-spacing:.12em; color:#7c8aa5; padding:6px 10px; }
+.lb-list{ display:grid; gap:4px; padding:4px 6px; }
+.lb-leaf{ padding:9px 10px; border-radius:10px; color:#d2d9e8; transition:background .15s,color .15s,transform .08s; }
+.lb-leaf:hover{ background:#111a2a; color:#ffffff; transform: translateX(1px) }
+.lb-leaf.active{ background:linear-gradient(90deg,#1f2a44,#1b243a); color:#fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.lb-ico{ width:18px; text-align:center; opacity:.95 }
+
+.lb-admin-main{
+  margin-left:var(--lb-side-w);
+  width:calc(100% - var(--lb-side-w));
+  background:#f7fafc;
+  min-height:100vh;
+  padding:0;
+}
+.lb-admin-main .lb-dock{
+  position:sticky; top:0; z-index:var(--lb-dock-z);
+  height:var(--lb-dock-h);
+  display:flex; align-items:center; gap:8px;
+  padding:8px 16px;
+  background:rgba(255,255,255,.85);
+  backdrop-filter: saturate(180%) blur(10px);
+  border-bottom:1px solid #e5e7eb;
+}
+.lb-main-inner{ padding:16px; }
+
+/* helpers */
+.lb-input{ border:1px solid #e5e7eb; border-radius:10px; padding:8px 10px; background:#fff; }
+.lb-table th{ text-align:left; font-weight:600; font-size:12px; color:#6b7280; padding:8px; border-bottom:1px solid #e5e7eb}
+.lb-table td{ padding:10px 8px; }
+@media (max-width:1023px){
+  .lb-admin-main{ margin-left:0; width:100%; }
+}
+
+/* lb tabs v2 */
+.lb-tabs{ display:flex; gap:6px; border-bottom:1px solid #e5e7eb; margin-top:10px }
+.lb-tab{ position:relative; padding:8px 12px; font-size:13px; color:#6b7280; border-bottom:2px solid transparent; border-radius:8px 8px 0 0 }
+.lb-tab:hover{ color:#111827; background:#f3f4f6 }
+.lb-tab.is-active{ color:#111827; border-color:#111827; font-weight:600 }
+.lb-badge{ margin-left:8px; font-size:11px; background:#eef2ff; color:#3730a3; padding:2px 6px; border-radius:999px }

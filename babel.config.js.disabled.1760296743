@@ -1,0 +1,11 @@
+/**
+ * LiteBrygg Admin — Babel config for React Compiler
+ * Next.js 15 bruker SWC by default, men React Compiler krever denne Babel-pluginen.
+ */
+module.exports = {
+  presets: [],
+  plugins: [
+    // Viktig: må være strengen 'babel-plugin-react-compiler'
+    'babel-plugin-react-compiler'
+  ]
+};

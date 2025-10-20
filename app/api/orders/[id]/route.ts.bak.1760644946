@@ -1,0 +1,43 @@
+import { NextResponse } from 'next/server'
+
+const M2_BASE = process.env.MAGENTO_BASE_URL || process.env.M2_BASE_URL
+const M2_TOKEN = process.env.MAGENTO_ADMIN_TOKEN || process.env.M2_ADMIN_TOKEN
+
+const STUBS = (globalThis as any).__ORD_STUBS__ ||= new Map<string, any>()
+
+async function m2Get<T>(path: string): Promise<T> {
+  if (!M2_BASE || !M2_TOKEN) throw new Error('missing env MAGENTO_BASE_URL/MAGENTO_ADMIN_TOKEN')
+  const url = `${M2_BASE.replace(/\/+$/,'')}/${path.replace(/^\/+/,'')}`
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${M2_TOKEN}` }, cache: 'no-store' })
+  if (!res.ok) {
+    const txt = await res.text().catch(()=>'')
+    throw new Error(`Magento GET ${url} failed: ${res.status} ${txt}`)
+  }
+  return await res.json()
+}
+
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await ctx.params
+    // Stub?
+    if (id.startsWith('ORD-') && STUBS.has(id)) {
+      return NextResponse.json(STUBS.get(id), { status: 200 })
+    }
+
+    // Magento: prøv direkte V1/orders/{id} (entity_id),
+    // hvis ikke, gjør søk på increment_id lik id
+    let data: any = null
+    const tryDirect = await m2Get<any>(`V1/orders/${encodeURIComponent(id)}`).catch(()=>null)
+    if (tryDirect && tryDirect?.entity_id) data = tryDirect
+    if (!data) {
+      const raw = await m2Get<any>(`V1/orders?searchCriteria[filter_groups][0][filters][0][field]=increment_id&searchCriteria[filter_groups][0][filters][0][value]=${encodeURIComponent(id)}&searchCriteria[filter_groups][0][filters][0][condition_type]=eq`)
+      const items = Array.isArray(raw?.items) ? raw.items : []
+      data = items[0] || null
+    }
+    if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json(data, { status: 200 })
+  } catch (err: any) {
+    console.error('[GET /api/orders/[id]] 500', err?.stack || err)
+    return NextResponse.json({ error: 'Internal error', detail: String(err?.message || err) }, { status: 500 })
+  }
+}

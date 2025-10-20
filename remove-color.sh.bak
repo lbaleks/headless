@@ -1,0 +1,18 @@
+: "${READ_BASE:="$BASE/rest/all/V1"}"
+: "${WRITE_BASE:="$BASE/rest/V1"}"
+#!/usr/bin/env sh
+set -eu
+
+: "${BASE:?BASE not set}; ${AUTH_ADMIN:?AUTH_ADMIN not set}"
+: "${PARENT_SKU:=TEST-CFG}"
+
+SKU="${1:-}"
+[ -n "$SKU" ] || { echo "Bruk: ./remove-color.sh <child-sku>"; exit 1; }
+
+# Fjern link (lar attribute option stå i fred)
+curl -sS -X DELETE -H "$AUTH_ADMIN" \
+  "$WRITE_BASE/configurable-products/$PARENT_SKU/children/$SKU" \
+  | jq . || true
+
+# Status
+curl -sS -H "$AUTH_ADMIN" "$WRITE_BASE/configurable-products/$PARENT_SKU/children" | jq -c 'map(.sku)'

@@ -1,0 +1,126 @@
+
+// app/admin/products/[id]/page.tsx
+'use client';
+import React, { useEffect, useState } from 'react';
+import { AdminPage } from '@/components/AdminPage';
+import { BulkVariantEdit } from '@/components/BulkVariantEdit';
+import { VariantImages } from '@/components/VariantImages';
+import type { ProductLike } from '@/types';
+
+export default function ProductDetail({ params }: { params: { id: string } }) {
+  const { id } = params;
+  const [form, setForm] = useState<ProductLike | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<'main' | 'variants' | 'media' | 'relations'>('main');
+
+  // --- Hent produkt ---
+  useEffect(() => {
+    let abort = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/products/${id}`);
+        if (!res.ok) throw new Error('Fetch failed');
+        const data = await res.json();
+        if (!abort) setForm(data);
+      } catch (err) {
+        console.error(err);
+        if (!abort) setForm(null);
+      }
+    })();
+    return () => { abort = true };
+  }, [id]);
+
+  // --- Lagre produkt ---
+  const save = async () => {
+    if (!form) return;
+    try {
+      setBusy(true);
+      const res = await fetch(`/api/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+      if (res.ok) {
+        (window as any).lbToast?.('Product saved');
+      } else {
+        (window as any).lbToast?.('Save failed');
+      }
+    } catch (e) {
+      console.error(e);
+      (window as any).lbToast?.('Save failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // --- Oppdater felt ---
+  const update = (patch: Partial<ProductLike>) => {
+    if (!form) return;
+    setForm({ ...form, ...patch });
+  };
+
+  if (!form) return <div className="p-4">Loading product…</div>;
+
+  return (
+    <AdminPage title={form.name || 'Product Detail'} busy={busy} onSave={save} tabs={[
+      { id: 'main', label: 'Hovedinfo' },
+      { id: 'variants', label: 'Varianter' },
+      { id: 'media', label: 'Media' },
+      { id: 'relations', label: 'Relasjoner' },
+    ]} activeTab={tab} onTabChange={setTab}>
+      {tab === 'main' && (
+        <div className="space-y-4">
+          <label className="block">
+            <div className="text-sm font-medium">Navn</div>
+            <input
+              className="input"
+              value={form.name || ''}
+              onChange={e => update({ name: e.target.value })}
+            />
+          </label>
+          <label className="block">
+            <div className="text-sm font-medium">Pris</div>
+            <input
+              type="number"
+              className="input"
+              value={form.price ?? 0}
+              onChange={e => update({ price: parseFloat(e.target.value) })}
+            />
+          </label>
+          <label className="block">
+            <div className="text-sm font-medium">Lager</div>
+            <input
+              type="number"
+              className="input"
+              value={form.stock ?? 0}
+              onChange={e => update({ stock: parseInt(e.target.value) })}
+            />
+          </label>
+        </div>
+      )}
+
+      {tab === 'variants' && (
+        <div className="mt-4">
+          <BulkVariantEdit
+            variants={form.variants || []}
+            onApply={(next) => update({ variants: next })}
+          />
+        </div>
+      )}
+
+      {tab === 'media' && (
+        <div className="mt-4">
+          <VariantImages
+            productId={id}
+            variants={form.variants || []}
+            onChange={(images) => update({ images })}
+          />
+        </div>
+      )}
+
+      {tab === 'relations' && (
+        <div className="admin-panel mt-4">Relations coming soon…</div>
+      )}
+    </AdminPage>
+  );
+}

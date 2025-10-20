@@ -1,0 +1,166 @@
+cp -f tools/autoinstall-family-v2.sh tools/autoinstall-family-v2.sh.bak
+
+cat > tools/autoinstall-family-v2.sh <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+log(){ printf "%(%Y-%m-%d %H:%M:%S)T %s\n" -1 "$*"; }
+
+ROOT="$(pwd)"
+
+ensure_dir(){
+  mkdir -p "$1"
+}
+
+write_file_if_missing(){
+  local dest="$1"
+  local tmp="$2"
+  if [ ! -f "$dest" ]; then
+    mkdir -p "$(dirname "$dest")"
+    cp "$tmp" "$dest"
+    log "  • Opprettet $(realpath "$dest" 2>/dev/null || echo "$dest")"
+  else
+    log "  • Finnes alt: $dest"
+  fi
+}
+
+# Trygg patcher: JS-snutt får 's' i scope og kan endre og returnere s.
+node_patch(){
+  local file="${1:-}"; shift || true
+  local js="${*:-"/* no-op */"}"
+  if [ -z "${file}" ] || [ ! -f "${file}" ]; then
+    log "  • skip: node_patch mangler fil ($file)"
+    return 0
+  fi
+  node - <<JS
+const fs = require('fs');
+const p  = ${JSON.stringify("${file}")};
+let s = fs.readFileSync(p,'utf8');
+const before = s;
+(function(){ ${js} })();
+if (s !== before){ fs.writeFileSync(p,s); console.log('patched', p) } else { console.log('ok', p) }
+JS
+}
+
+# 1) Komponent: FamilyPicker (client)
+log "→ Family (Akeneo nivå 1): komponent + API + UI"
+TMP="$(mktemp)"
+cat > "$TMP" <<'TSX'
+'use client'
+import { useState } from 'react'
+
+type Props = {
+  value?: string
+  onChange?: (v:string)=>void
+  families?: string[]
+}
+export default function FamilyPicker({ value='', onChange, families=['default','beer'] }: Props){
+  const [v,setV] = useState(value)
+  return (
+    <div className="flex items-center gap-2">
+      <label className="text-sm text-neutral-600">Family</label>
+      <select
+        className="border rounded px-2 py-1 text-sm"
+        value={v}
+        onChange={e=>{ setV(e.target.value); onChange?.(e.target.value) }}
+      >
+        {families.map(f=><option key={f} value={f}>{f}</option>)}
+      </select>
+    </div>
+  )
+}
+TSX
+write_file_if_missing "src/components/FamilyPicker.tsx" "$TMP"
+
+# 2) API: POST /api/products/update-family  (body: {sku, family})
+TMP="$(mktemp)"
+cat > "$TMP" <<'TS'
+import { NextResponse } from 'next/server'
+import { promises as fs } from 'fs'
+import path from 'path'
+
+type Body = { sku?: string, family?: string }
+
+export async function POST(req: Request){
+  const body = await req.json().catch(()=> ({} as Body))
+  const sku = String(body?.sku||'').trim()
+  const family = String(body?.family||'').trim() || 'default'
+  if(!sku) return NextResponse.json({ok:false, error:'Missing sku'}, {status:400})
+
+  const VAR_DIR = path.join(process.cwd(), 'var')
+  const PROD_FILE = path.join(VAR_DIR, 'products.dev.json')
+  await fs.mkdir(VAR_DIR, { recursive:true })
+
+  let data:any = []
+  try {
+    const raw = await fs.readFile(PROD_FILE,'utf8')
+    data = raw.trim()? JSON.parse(raw) : []
+  } catch { data = [] }
+
+  // normalize to array of overrides
+  if(!Array.isArray(data)) data = Array.isArray(data.items)? data.items : []
+
+  // upsert by SKU (case-insensitive)
+  const idx = data.findIndex((p:any)=> String(p?.sku||'').toLowerCase() === sku.toLowerCase())
+  const now = new Date().toISOString()
+  if(idx >= 0){
+    const cur = data[idx] || {}
+    data[idx] = { ...cur, sku, family, updated_at: now, source:'local-override' }
+  }else{
+    data.push({ id:Date.now(), sku, family, created_at: now, updated_at: now, source:'local-override' })
+  }
+
+  await fs.writeFile(PROD_FILE, JSON.stringify(data, null, 2))
+  return NextResponse.json({ ok:true, sku, family })
+}
+TS
+write_file_if_missing "app/api/products/update-family/route.ts" "$TMP"
+
+# 3) (Valgfritt) utvid /api/products/completeness for å respektere family hvis feltet finnes
+COMP_ROUTE="app/api/products/completeness/route.ts"
+if [ -f "$COMP_ROUTE" ]; then
+  log "→ Completeness: forsøker å bruke produktets family hvis tilgjengelig"
+  node_patch "$COMP_ROUTE" '
+    // injiser default family dersom felt finnes
+    if(!/const DEFAULT_FAMILY/.test(s)){
+      s = s.replace(/(export async function GET\\(req: Request\\)[\\s\\S]*?\\{)/, `$1
+  const DEFAULT_FAMILY = "default";
+`);
+    }
+    // prøv å lese family fra produkt hvis items-løkke bygger completeness
+    if(!/const famFor/.test(s)){
+      s = s.replace(/(const items\\s*=\\s*[^;]+;)/, `$1
+  const famFor = (p:any)=> String(p?.family||DEFAULT_FAMILY);
+`);
+    }
+    // der vi bygger hver item.completeness, bytt til famFor(p)
+    s = s.replace(/(family\\s*:\\s*)(["\\w-]+|DEFAULT_FAMILY)/g, `$1 famFor(item)`);
+  '
+else
+  log "  • Skipper completeness-tilpasning (route finnes ikke)"
+fi
+
+# 4) UI: injiser FamilyPicker i admin products-side (idempotent)
+PAGE="app/admin/products/page.tsx"
+if [ -f "$PAGE" ]; then
+  log "→ UI: injiser FamilyPicker i admin/products"
+  # import
+  node_patch "$PAGE" '
+    if(!s.includes("src/components/FamilyPicker")){
+      s = s.replace(/^(import[^\\n]*\\n)+/, m => m + "import FamilyPicker from \\'@/src/components/FamilyPicker\\'\\n");
+    }
+  '
+  # plassering: rett etter <main ...>
+  node_patch "$PAGE" '
+    if(!s.includes("<FamilyPicker")){
+      s = s.replace(/(<main[^>]*>)/, `$1\\n        <div className=\\"mb-4\\"><FamilyPicker /></div>`);
+    }
+  '
+else
+  log "  • Fant ikke $PAGE – hopper over UI-patch"
+fi
+
+log "✓ Ferdig (family v2)"
+SH
+
+chmod +x tools/autoinstall-family-v2.sh

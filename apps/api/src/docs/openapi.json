@@ -1,0 +1,27 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Litebrygg Admin API (v2)", "version": "0.3.0" },
+  "servers": [{ "url": "http://127.0.0.1:3044" }],
+  "components": { "securitySchemes": { "apiKeyAuth": { "type": "apiKey", "name": "x-api-key", "in": "header" } } },
+  "security": [{ "apiKeyAuth": [] }],
+  "paths": {
+    "/v2/health": { "get": { "summary": "Health", "responses": { "200": { "description": "OK" }}}},
+    "/v2/feature-flags": { "get": { "summary": "Flags", "responses": { "200": { "description": "OK" }}}},
+    "/v2/auth/whoami": { "get": { "summary": "Who am I (role)", "responses": { "200": { "description": "OK" }}}},
+    "/v2/integrations/magento/products": { "get": { "summary": "List products", "parameters": [{ "name":"page","in":"query"},{ "name":"pageSize","in":"query"},{ "name":"q","in":"query"}], "responses": { "200": { "description": "OK" }}}},
+    "/v2/integrations/magento/products/{sku}": { "get": { "summary": "Get product", "parameters": [{ "name":"sku","in":"path","required":true }], "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" }}}},
+    "/v2/integrations/magento/products/{sku}/price": { "put": { "summary": "Update price (admin)", "responses": { "200": { "description": "OK" }, "403": { "description": "Forbidden" }}}},
+    "/v2/integrations/magento/products/{sku}/stock": { "put": { "summary": "Update stock (admin)", "responses": { "200": { "description": "OK" }, "403": { "description": "Forbidden" }}}},
+    "/v2/integrations/magento/products/{sku}/status": { "put": { "summary": "Update status (admin)", "responses": { "200": { "description": "OK" }, "403": { "description": "Forbidden" }}}},
+    "/v2/integrations/magento/customers": { "get": { "summary": "List customers", "parameters": [{ "name":"page","in":"query"},{ "name":"pageSize","in":"query"},{ "name":"q","in":"query"}], "responses": { "200": { "description": "OK" }}}},
+    "/v2/integrations/magento/orders": { "get": { "summary": "List orders", "parameters": [{ "name":"page","in":"query"},{ "name":"pageSize","in":"query"},{ "name":"q","in":"query"}], "responses": { "200": { "description": "OK" }}}},
+    "/v2/integrations/magento/orders/{id}": { "get": { "summary": "Get order", "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" }}}},
+    "/v2/integrations/magento/orders/{id}/invoice": { "post": { "summary": "Create invoice (admin)", "responses": { "200": { "description": "OK" }, "403": { "description": "Forbidden" }}}},
+    "/v2/integrations/magento/orders/{id}/creditmemo": { "post": { "summary": "Create credit memo (admin)", "responses": { "200": { "description": "OK" }, "403": { "description": "Forbidden" }}}},
+    "/v2/integrations/magento/categories/tree": { "get": { "summary": "Categories tree", "parameters": [{ "name":"depth","in":"query"}], "responses": { "200": { "description": "OK" }}}},
+    "/v2/integrations/magento/sales-rules": { "get": { "summary": "List sales rules", "responses": { "200": { "description": "OK" }}}},
+    "/v2/integrations/magento/sales-rules/{id}/enabled": { "put": { "summary": "Toggle sales rule (admin)", "responses": { "200": { "description": "OK" }, "403": { "description": "Forbidden" }}}},
+    "/v2/integrations/magento/creditmemos/{id}": { "get": { "summary": "Get credit memo", "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" }}}},
+    "/v2/integrations/magento/creditmemos": { "get": { "summary": "List credit memos (order_id required; best effort)", "parameters": [{ "name":"order_id","in":"query"}], "responses": { "200": { "description": "OK" }}}}
+  }
+}

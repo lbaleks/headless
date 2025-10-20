@@ -1,0 +1,1 @@
+export async function unwrapParams<T>(p:T|Promise<T>):Promise<T>{ return (p && typeof (p as any).then==='function') ? await (p as any) : (p as any) }

@@ -1,0 +1,54 @@
+"use client";
+import React from "react";
+
+async function j(url:string){
+  const r = await fetch(url, { cache:"no-store" });
+  const t = await r.text(); if(!t) return {};
+  try { return JSON.parse(t); } catch { return {}; }
+}
+
+export default function AuditPage(){
+  const [rows,setRows] = React.useState<any[]>([]);
+  const [loading,setLoading] = React.useState(true);
+
+  React.useEffect(()=>{
+    (async ()=>{
+      try{
+        const d:any = await j("/api/admin/audit");
+        setRows(Array.isArray(d?.events)? d.events : []);
+      } finally { setLoading(false); }
+    })();
+  },[]);
+
+  return (
+    <main className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-medium">Audit log</h2>
+        <div className="flex gap-2"><a className="btn" href="/admin/dashboard">Dashboard</a></div>
+      </div>
+
+      <section className="card">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs opacity-60">
+              <tr><th className="py-1.5 pr-3">Tid</th><th className="py-1.5 pr-3">Aktør</th><th className="py-1.5 pr-3">Handling</th><th className="py-1.5 pr-3">Target</th><th className="py-1.5 pr-3">Detaljer</th></tr>
+            </thead>
+            <tbody>
+              {loading && <tr><td className="py-2 sub" colSpan={5}>Laster…</td></tr>}
+              {!loading && rows.length===0 && <tr><td className="py-2 sub" colSpan={5}>Ingen hendelser</td></tr>}
+              {rows.map(e=>(
+                <tr key={e.id} className="border-t">
+                  <td className="py-1.5 pr-3">{new Date(e.ts).toLocaleString()}</td>
+                  <td className="py-1.5 pr-3">{e.actor||"—"}</td>
+                  <td className="py-1.5 pr-3">{e.action}</td>
+                  <td className="py-1.5 pr-3">{e.target||"—"}</td>
+                  <td className="py-1.5 pr-3"><pre className="text-xs">{JSON.stringify(e.meta||{},null,0)}</pre></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  );
+}

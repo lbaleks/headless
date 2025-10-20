@@ -1,0 +1,18 @@
+{
+  "users": [
+    {
+      "id": "u1",
+      "name": "Ola Nordmann",
+      "email": "ola@litebrygg.no",
+      "role": "Admin",
+      "active": true
+    },
+    {
+      "id": "u2",
+      "name": "Kari Nordmann",
+      "email": "kari@litebrygg.no",
+      "role": "User",
+      "active": true
+    }
+  ]
+}

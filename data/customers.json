@@ -1,0 +1,66 @@
+{
+  "customers": [
+    {
+      "id": "c1",
+      "email": "kari@example.com",
+      "firstName": "Kari",
+      "lastName": "Nordmann",
+      "company": "Bryggeri AS",
+      "group": "B2B",
+      "phone": "+47 999 99 999",
+      "lifetimeValue": 12450,
+      "orders": [
+        "100001",
+        "100002"
+      ],
+      "tags": [],
+      "status": "active",
+      "addresses": [
+        {
+          "type": "billing",
+          "line1": "Pilestredet 1",
+          "city": "Oslo",
+          "zip": "0164",
+          "country": "NO"
+        },
+        {
+          "type": "shipping",
+          "line1": "Bryggeveien 2",
+          "city": "Oslo",
+          "zip": "0252",
+          "country": "NO"
+        }
+      ],
+      "notes": "VIP kunde",
+      "creditLimit": 200000
+    },
+    {
+      "id": "c2",
+      "email": "ola@example.com",
+      "firstName": "Ola",
+      "lastName": "Nordmann",
+      "company": "Hjemmebrygg",
+      "group": "B2C",
+      "phone": "+47 988 88 888",
+      "lifetimeValue": 1890,
+      "orders": [
+        "100003"
+      ],
+      "tags": [
+        "newsletter"
+      ],
+      "status": "active",
+      "addresses": [
+        {
+          "type": "billing",
+          "line1": "Storgata 10",
+          "city": "Trondheim",
+          "zip": "7011",
+          "country": "NO"
+        }
+      ],
+      "notes": "",
+      "creditLimit": 100000
+    }
+  ]
+}

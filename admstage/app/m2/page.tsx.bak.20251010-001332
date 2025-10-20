@@ -1,0 +1,25 @@
+"use client";
+import Link from "next/link";// øverst:
+import DarkToggle from "./DarkToggle";
+
+
+const LinkCard = ({ href, title, desc }:{href:string; title:string; desc:string}) => (
+  <Link href={href} className="block rounded-2xl border p-4 hover:bg-black/5 dark:hover:bg-white/5 transition">
+    <div className="text-lg font-medium">{title}</div>
+    <div className="text-sm text-zinc-500">{desc}</div>
+  </Link>
+);
+// inne i JSX:
+   <div className="flex gap-2">
+  <DarkToggle />
+</div>
+export default function M2Home() {
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      <LinkCard href="/m2/variants" title="🧩 Variant-healer" desc="Opprett/hel variant + (valgfritt) lager." />
+      <LinkCard href="/m2/configurable" title="🔗 Link configurable" desc="Koble child til parent med attributt/valueIndex." />
+      <LinkCard href="/m2/price" title="💶 Sett pris" desc="Oppdater pris for SKU." />
+      <LinkCard href="/m2/bulk" title="📦 Bulk (forberedt)" desc="Importer CSV og forhåndsvis – validering kommer i steg 1." />
+    </div>
+  );
+}

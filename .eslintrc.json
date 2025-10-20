@@ -1,0 +1,14 @@
+{
+  "extends": ["next", "next/core-web-vitals", "plugin:import/recommended"],
+  "rules": {
+    "import/first": "error",
+    "no-inline-comments": "off",
+    "no-restricted-syntax": [
+      "error,
+      {
+        "selector": "CallExpression[callee.name='useEffect'] ImportDeclaration",
+        "message": "Imports må ligge på top-level, ikke inni hooks/cleanup."
+      }
+    ]
+  }
+}

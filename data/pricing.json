@@ -1,0 +1,17 @@
+{
+  "rules": [
+    {
+      "type": "tier",
+      "label": "Test",
+      "price": 100,
+      "currency": "NOK"
+    },
+    {
+      "type": "base",
+      "label": "New rule",
+      "price": 0,
+      "currency": "NOK"
+    }
+  ],
+  "updatedAt": "2025-10-14T21:27:23.156Z"
+}

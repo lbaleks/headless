@@ -1,0 +1,91 @@
+"use client";
+import React from "react";
+import { useRole } from "@/app/lib/useRole";
+type Row = { id:string; name:string; email:string; companyId?:string; role?: "admin"|"ops"|"support"|"viewer"; company?:string };
+
+async function j(url:string, init?:RequestInit){
+  const r = await fetch(url, { cache:"no-store", ...init });
+  const t = await r.text(); if(!t) return {};
+  try{ return JSON.parse(t); } catch{ return {}; }
+}
+
+export default function UsersPage(){
+  const { role, loading: roleLoading, canWrite } = useRole();
+  const [rows,setRows] = React.useState<Row[]>([]);
+  const [companies,setCompanies] = React.useState<{id:string;name:string}[]>([]);
+  const [loading,setLoading] = React.useState(true);
+  const [form,setForm] = React.useState<Row>({ id:"", name:"", email:"", companyId:"", role:"viewer" });
+
+  const load = React.useCallback(async()=>{
+    setLoading(true);
+    try{
+      const [u,c]:any = await Promise.all([ j("/api/users"), j("/api/companies") ]);
+      setRows(Array.isArray(u?.users)? u.users : []);
+      setCompanies(Array.isArray(c?.companies)? c.companies : []);
+    } finally { setLoading(false); }
+  },[]);
+  React.useEffect(()=>{ load(); }, [load]);
+
+  const save = async ()=>{
+    await fetch("/api/users", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(form) });
+    setForm({ id:"", name:"", email:"", companyId:"", role:"viewer" }); load();
+  };
+
+  return (
+    <main className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-medium">Users</h2>
+        <a className="btn" href="/admin/companies">Companies</a>
+      </div>
+
+      <section className="card space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-end">
+          <label className="block"><div className="sub mb-1">ID</div>
+            <input className="border rounded px-2 py-1 w-full" value={form.id} disabled={!canWrite} onChange={e=>setForm({...form, id:e.target.value})}/>
+          </label>
+          <label className="block"><div className="sub mb-1">Navn</div>
+            <input className="border rounded px-2 py-1 w-full" value={form.name} disabled={!canWrite} onChange={e=>setForm({...form, name:e.target.value})}/>
+          </label>
+          <label className="block"><div className="sub mb-1">E-post</div>
+            <input className="border rounded px-2 py-1 w-full" value={form.email} disabled={!canWrite} onChange={e=>setForm({...form, email:e.target.value})}/>
+          </label>
+          <label className="block"><div className="sub mb-1">Company</div>
+            <select className="border rounded px-2 py-1 w-full" value={form.companyId||""} disabled={!canWrite} onChange={e=>setForm({...form, companyId:e.target.value||undefined})}>
+              <option value="">(ingen)</option>
+              {companies.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          <label className="block"><div className="sub mb-1">Rolle</div>
+            <select className="border rounded px-2 py-1 w-full" value={form.role||"viewer"} disabled={!canWrite} onChange={e=>setForm({...form, role:(e.target.value as any)})}>
+              <option value="admin">admin</option><option value="ops">ops</option><option value="support">support</option><option value="viewer">viewer</option>
+            </select>
+          </label>
+          <button className="btn" onClick={save} disabled={!canWrite}>Legg til / oppdater</button>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs opacity-60">
+              <tr><th className="py-1.5 pr-3">ID</th><th className="py-1.5 pr-3">Navn</th><th className="py-1.5 pr-3">E-post</th><th className="py-1.5 pr-3">Company</th><th className="py-1.5 pr-3">Rolle</th></tr>
+            </thead>
+            <tbody>
+              {loading && <tr><td className="py-2 sub" colSpan={5}>Laster…</td></tr>}
+              {!loading && rows.length===0 && <tr><td className="py-2 sub" colSpan={5}>Ingen brukere</td></tr>}
+              {rows.map(r=>(
+                <tr key={r.id} className="border-t">
+                  <td className="py-1.5 pr-3">{r.id}</td>
+                  <td className="py-1.5 pr-3">{r.name}</td>
+                  <td className="py-1.5 pr-3">{r.email}</td>
+                  <td className="py-1.5 pr-3">{r.company||r.companyId||"—"}</td>
+                  <td className="py-1.5 pr-3">{r.role||"—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  );
+}

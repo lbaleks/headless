@@ -1,0 +1,1 @@
+export function newId(prefix='p'){ const s=Date.now().toString(36); const r=Math.random().toString(36).slice(2,6); return `${prefix}-${s}-${r}` }

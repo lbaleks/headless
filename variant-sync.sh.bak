@@ -1,0 +1,86 @@
+: "${READ_BASE:="$BASE/rest/all/V1"}"
+: "${WRITE_BASE:="$BASE/rest/V1"}"
+#!/usr/bin/env sh
+set -eu
+
+: "${BASE:?BASE not set}; ${AUTH_ADMIN:?AUTH_ADMIN not set}"
+: "${PARENT_SKU:=TEST-CFG}"
+: "${ATTR_CODE:=cfg_color}"
+: "${WEBSITE_ID:=1}"
+: "${SOURCE_CODE:=default}"
+: "${ATTR_SET_ID:=4}"
+
+echo "== Variant Auto-Healer =="
+echo "BASE=$BASE  PARENT=$PARENT_SKU  ATTR=$ATTR_CODE  WEBSITE=$WEBSITE_ID"
+
+# 1) Hent attribute_id og alle options
+ATTR_ID=$(curl -sS -H "$AUTH_ADMIN" "$WRITE_BASE/products/attributes/$ATTR_CODE" | jq -r '.attribute_id')
+OPTS=$(curl -sS -H "$AUTH_ADMIN" "$WRITE_BASE/products/attributes/$ATTR_CODE/options" \
+  | jq -c '[.[] | select(.value!="")]')
+
+# 2) Sørg for at parent har option for denne attributten (lag hvis mangler)
+PARENT=$(curl -sS -H "$AUTH_ADMIN" "$WRITE_BASE/products/$PARENT_SKU?fields=extension_attributes")
+CURR_OPT=$(printf '%s' "$PARENT" | jq -c '.extension_attributes.configurable_product_options // []')
+OPT_ID=$(printf '%s' "$CURR_OPT" | jq -r --arg id "$ATTR_ID" '.[] | select(.attribute_id==$id or .label=="'"$ATTR_CODE"'") | .id' | head -n1)
+
+if [ -z "$OPT_ID" ] || [ "$OPT_ID" = "null" ]; then
+  DATA=$(jq -n --arg attr_id "$ATTR_ID" --arg label "$ATTR_CODE" \
+    --argjson vals "$(printf '%s' "$OPTS" | jq '[.[] | {value_index:(.value|tonumber)}]')" \
+    '{option:{attribute_id:$attr_id,label:$label,position:0,is_use_default:true,values:$vals}}')
+  curl -sS -X POST -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+    --data-binary "$DATA" \
+    "$WRITE_BASE/configurable-products/$PARENT_SKU/options" >/dev/null
+else
+  # Utvid med alle values som ikke finnes
+  HAVE=$(printf '%s' "$CURR_OPT" | jq -c --argjson id "$OPT_ID" '.[] | select(.id==$id) | .values')
+  NEED=$(jq -n \
+    --argjson have "$HAVE" \
+    --argjson want "$(printf '%s' "$OPTS" | jq '[.[] | {value_index:(.value|tonumber)}]')" \
+    '$want - $have')
+  if [ "$(printf '%s' "$NEED" | jq 'length')" -gt 0 ]; then
+    BODY=$(jq -n \
+      --argjson id "$OPT_ID" \
+      --arg attr_id "$(printf '%s' "$CURR_OPT" | jq -r --argjson id "$OPT_ID" '.[] | select(.id==$id) | .attribute_id')" \
+      --arg label    "$(printf '%s' "$CURR_OPT" | jq -r --argjson id "$OPT_ID" '.[] | select(.id==$id) | .label')" \
+      --argjson vals "$(jq -n --argjson have "$HAVE" --argjson need "$NEED" '$have + $need')" \
+      '{option:{id:$id,attribute_id:$attr_id,label:$label,position:0,is_use_default:true,values:$vals}}')
+    curl -sS -X PUT -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+      --data-binary "$BODY" \
+      "$WRITE_BASE/configurable-products/$PARENT_SKU/options/$(printf '%s' "$OPT_ID")" >/dev/null
+  fi
+fi
+
+# 3) For hver option: sikre at SKU eksisterer, har riktig attribute, er på website, har MSI, og er attached
+printf '%s' "$OPTS" | jq -rc '.[]' | while IFS= read -r row; do
+  label=$(printf '%s' "$row" | jq -r '.label')
+  val=$(printf '%s' "$row" | jq -r '.value')
+
+  # Navn/sku forslag – vi gjør INGEN destructive endring hvis produkt finnes med annet navn
+  SKU="TEST-$(printf '%s' "$label" | tr -cs '[:alnum:]' '-' | tr '[:lower:]' '[:upper:]')"
+
+  echo "--- $SKU ($label → $val) ---"
+
+  # Oppdater/lag produkt
+  PUT=$(jq -n \
+    --arg sku "$SKU" --arg name "$label" --arg attr "$ATTR_CODE" --arg val "$val" \
+    --argjson set ${ATTR_SET_ID:-4} --argjson wid ${WEBSITE_ID:-1} \
+    '{product:{sku:$sku,name:$name,type_id:"simple",attribute_set_id:$set,visibility:1,price:399,status:1,weight:1,
+               extension_attributes:{website_ids:[$wid]},
+               custom_attributes:[{attribute_code:$attr,value:$val}]}}')
+  curl -sS -X PUT -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+    --data-binary "$PUT" \
+    "$WRITE_BASE/products/$SKU" >/dev/null 2>&1 || true
+
+  # MSI
+  curl -sS -X POST -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+    --data "$(jq -n --arg sku "$SKU" --arg src "${SOURCE_CODE:-default}" '{sourceItems:[{sku:$sku,source_code:$src,quantity:10,status:1}]}')" \
+    "$WRITE_BASE/inventory/source-items" >/dev/null 2>&1 || true
+
+  # Attach
+  curl -sS -X POST -H "$AUTH_ADMIN" -H 'Content-Type: application/json' \
+    --data "$(jq -n --arg sku "$SKU" '{childSku:$sku}')" \
+    "$WRITE_BASE/configurable-products/$PARENT_SKU/child" >/dev/null 2>&1 || true
+done
+
+echo "✅ Parent oppdatert."
+curl -sS -H "$AUTH_ADMIN" "$WRITE_BASE/configurable-products/$PARENT_SKU/children" | jq -c 'map(.sku)'

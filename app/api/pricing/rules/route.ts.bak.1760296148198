@@ -1,0 +1,33 @@
+// app/api/pricing/rules/route.ts
+import { NextResponse } from "next/server";
+import { append as audit } from "../../../data/audit";
+import { pricingDB, type Rule } from "../../../data/pricing";
+
+export async function GET(){
+  return NextResponse.json({ ok:true, rules: pricingDB.rules });
+}
+
+export async function PUT(req:Request){
+  try{
+    const body = await req.json().catch(()=> ({}));
+    const incoming = Array.isArray(body?.rules) ? body.rules : [];
+    const clean: Rule[] = [];
+    for (const r of incoming) {
+      if (!r || typeof r !== "object") continue;
+      const tier = (["A","B","C"] as const).includes((r as any).tier) ? (r as any).tier : null;
+      if (!tier) continue;
+      const discountPct   = Number.isFinite((r as any).discountPct)   ? Number((r as any).discountPct)   : 0;
+      const minQty        = Number.isFinite((r as any).minQty)        ? Number((r as any).minQty)        : 1;
+      const maxDiscountPct= Number.isFinite((r as any).maxDiscountPct)? Number((r as any).maxDiscountPct): undefined;
+      clean.push({ tier, discountPct, minQty, maxDiscountPct });
+    }
+    if (clean.length === 0) return NextResponse.json({ ok:false, error:"invalid_rules" }, { status:400 });
+
+    pricingDB.rules = clean;
+    audit({ actor:"admin", action:"pricing.rules.update", target:"rules", meta:{ count: clean.length } });
+
+    return NextResponse.json({ ok:true, rules: pricingDB.rules });
+  }catch(e:any){
+    return NextResponse.json({ ok:false, error:e?.message||"bad_request" }, { status:400 });
+  }
+}

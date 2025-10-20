@@ -1,0 +1,153 @@
+{
+  "orders": [
+    {
+      "id": "100001",
+      "currency": "NOK",
+      "items": [
+        {
+          "sku": "m1",
+          "name": "Malt 1 kg",
+          "qty": 2,
+          "price": 59
+        },
+        {
+          "sku": "h1",
+          "name": "Humle 100g",
+          "qty": 1,
+          "price": 89
+        }
+      ],
+      "total": 207,
+      "paidTotal": 0,
+      "refundedTotal": 0,
+      "status": "processing",
+      "createdAt": "2025-10-14T09:54:47.599Z",
+      "returns": [
+        {
+          "id": "1760437126938",
+          "createdAt": "2025-10-14T10:18:46.938Z",
+          "status": "requested",
+          "items": [
+            {
+              "sku": "m1",
+              "qty": 1,
+              "reason": ""
+            }
+          ]
+        },
+        {
+          "id": "1760442432566",
+          "createdAt": "2025-10-14T11:47:12.566Z",
+          "status": "requested",
+          "items": [
+            {
+              "sku": "m1",
+              "qty": 2,
+              "reason": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "pricingRules": [
+    {
+      "type": "base",
+      "label": "Base",
+      "price": 0,
+      "currency": "NOK"
+    }
+  ],
+  "products": [
+    {
+      "id": "123",
+      "sku": "TEST-001",
+      "name": "Pilsner malt",
+      "description": "test test",
+      "status": "active",
+      "category": "Malt",
+      "price": 2.7,
+      "cost": 0,
+      "stock": 10000,
+      "currency": "NOK",
+      "images": [
+        "https://picsum.photos/seed/1760477925459/600/400"
+      ],
+      "variants": [
+        {
+          "id": "1760477862269",
+          "name": "100g",
+          "sku": "PM-100"
+        },
+        {
+          "id": "1760477873363",
+          "name": "Sekk",
+          "sku": "PM-25",
+          "price": 2.2,
+          "multiplier": 250
+        }
+      ],
+      "priceTiers": [],
+      "createdAt": "2025-10-14T21:36:53.798Z",
+      "updatedAt": "2025-10-14T21:36:53.798Z",
+      "taxClass": "25%",
+      "shippingClass": "25%",
+      "weight": 0.1,
+      "brand": "Wyermann",
+      "categories": [
+        "Basemalt"
+      ],
+      "options": [
+        {
+          "code": "milling",
+          "label": "Kverning",
+          "enabled": true,
+          "priceDelta": 0.17,
+          "name": "I samme sekk",
+          "values": [
+            {
+              "label": "Ja",
+              "priceDelta": 0
+            },
+            {
+              "label": "Nei",
+              "priceDelta": 0
+            }
+          ]
+        },
+        {
+          "id": "1760478159972",
+          "name": "Kverning",
+          "type": "bool",
+          "values": [
+            {
+              "label": "Ja",
+              "priceDelta": 0.17
+            },
+            {
+              "label": "Nei",
+              "priceDelta": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M1",
+      "sku": "T",
+      "name": "TEST",
+      "description": "",
+      "status": "active",
+      "category": "Malt",
+      "price": 199,
+      "cost": 0,
+      "stock": 200,
+      "currency": "NOK",
+      "images": [],
+      "variants": [],
+      "priceTiers": [],
+      "createdAt": "2025-10-15T06:07:44.541Z",
+      "updatedAt": "2025-10-15T06:07:44.541Z"
+    }
+  ]
+}

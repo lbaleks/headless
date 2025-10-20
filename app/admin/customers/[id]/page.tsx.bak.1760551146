@@ -1,0 +1,136 @@
+'use client'
+import * as React from 'react'
+import { useParams } from 'next/navigation'
+import AdminPage from '@/components/AdminPage'
+import Timeline from '@/components/ui/Timeline'
+import Tabs from '@/components/ui/Tabs'
+import TagInput from '@/components/crm/TagInput'
+import TaskList from '@/components/crm/TaskList'
+
+export default function CustomerDetail(){
+  const { id } = useParams()
+  const [c,setC]=React.useState<any>(null)
+  const [tab,setTab]=React.useState('overview')
+
+  React.useEffect(()=>{
+    if(!id) return
+    fetch('/api/customers/'+id)
+      .then(r=>r.json())
+      .then(setC)
+      .catch(console.error)
+  },[id])
+
+  async function save(next:any){
+    if(!id) return
+    setC(next)
+    await fetch('/api/customers/'+id,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(next)
+    })
+  }
+
+  if(!c) return <AdminPage title="Customer"><div>Loading…</div></AdminPage>
+
+  return (
+    <AdminPage title={c.name||'Customer'}>
+      <Tabs
+        tabs={[
+          {key:'overview',label:'Overview'},
+          {key:'activity',label:'Activity'},
+          {key:'tasks',label:'Tasks'},
+          {key:'orders',label:'Orders'},
+          {key:'credit',label:'Credit & Risk'},
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+
+      {/* main content */}
+      <div className="admin-panel p-4 mt-4">
+        {tab==='overview' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div className="admin-section">
+                <label className="lb-label">Email</label>
+                <input className="lb-input" defaultValue={c.email||''} onBlur={e=>save({...c,email:e.target.value})}/>
+              </div>
+              <div className="admin-section">
+                <label className="lb-label">Phone</label>
+                <input className="lb-input" defaultValue={c.phone||''} onBlur={e=>save({...c,phone:e.target.value})}/>
+              </div>
+              <div className="admin-section">
+                <label className="lb-label">Tags</label>
+                <TagInput value={c.tags||[]} onChange={v=>save({...c,tags:v})}/>
+              </div>
+            </div>
+            <div>
+              <div className="admin-section">
+                <div className="admin-section-title">Credit / Risk</div>
+                <label className="lb-label">Credit limit</label>
+                <input type="number" className="lb-input" defaultValue={c.creditLimit??0} onBlur={e=>save({...c,creditLimit:Number(e.target.value)||0})}/>
+                <label className="lb-label mt-3">Risk note</label>
+                <textarea className="lb-input" rows={4} defaultValue={c.riskNote||''} onBlur={e=>save({...c,riskNote:e.target.value})}/>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab==='activity' && (
+          <Timeline items={[
+            {text:'Created customer',ts:Date.now()-1000*60*60*24*5,tone:'success'},
+            {text:'Order #324 confirmed',ts:Date.now()-1000*60*60*24*2,tone:'info'},
+            {text:'Invoice overdue',ts:Date.now()-1000*60*60*5,tone:'danger'},
+          ]}/>
+        )}
+
+        {tab==='tasks' && (
+          <TaskList
+            value={c.tasks||[]}
+            onChange={(tasks)=>save({...c,tasks})}>save({...c,tasks})}
+          />
+        )}
+
+        {tab==='orders' && (
+          <div>
+            <div className="admin-section-title mb-2">Linked Orders</div>
+            <ul className="divide-y divide-neutral-200">
+              {(c.orders||[]).map((o:any,i:number)=>(
+                <li key={String(o?.id ?? i)} className="py-2 text-sm flex justify-between">
+                  <span>Order #{o.id}</span>
+                  <span>{Number(o?.total ?? 0).toFixed(2)} {o.currency||'NOK'}</span>
+                </li>
+              ))}
+              {(!c.orders||!c.orders.length)&&(
+                <li className="text-neutral-400 text-sm py-2">No linked orders yet</li>
+              )}
+            </ul>
+          </div>
+        )}
+
+        {tab==='credit' && (
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <div className="admin-section">
+                <label className="lb-label">Credit Limit</label>
+                <input type="number" className="lb-input" defaultValue={c.creditLimit??0} onBlur={e=>save({...c,creditLimit:Number(e.target.value)||0})}/>
+              </div>
+              <div className="admin-section mt-4">
+                <label className="lb-label">Risk Note</label>
+                <textarea className="lb-input" rows={5} defaultValue={c.riskNote||''} onBlur={e=>save({...c,riskNote:e.target.value})}/>
+              </div>
+            </div>
+            <div>
+              <div className="admin-section">
+                <div className="admin-section-title mb-1">Lifetime Value</div>
+                <div className="text-2xl font-semibold">
+                  {(c.lifetimeValue??0).toLocaleString('no-NO')} {c.currency||'NOK'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </AdminPage>
+  )
+}

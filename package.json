@@ -1,0 +1,71 @@
+{
+  "devDependencies": {
+    "@babel/preset-react": "^7.27.1",
+    "@babel/preset-typescript": "^7.27.1",
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.38.0",
+    "@next/eslint-plugin-next": "^15.5.6",
+    "@tailwindcss/postcss": "^4.1.14",
+    "@types/node": "^24.7.2",
+    "@types/react": "19.2.2",
+    "autoprefixer": "^10.4.21",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "eslint": "^9.38.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^15.15.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.4",
+    "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.14",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.1"
+  },
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "sanity:api": "node scripts/sanity-api.mjs",
+    "autoinstall": "bash tools/autoinstall-dev-suite.sh",
+    "verify:devops": "bash tools/autoinstall-verify.sh",
+    "autopatch:jobs": "bash tools/autopatch-jobs.sh",
+    "verify:jobs": "bash -lc 'set -e; export BASE=http://localhost:3000; curl -s -X POST \"$BASE/api/jobs/run-sync\" | jq -c . > /dev/null; curl -s \"$BASE/api/jobs/latest\" | jq -c . > /dev/null; echo OK'",
+    "dev:reset": "bash -lc 'pids=$(lsof -ti tcp:3000,tcp:3001 2>/dev/null || true); [ -n \"\" ] && kill $pids || true; sleep 0.3; pids=$(lsof -ti tcp:3000,tcp:3001 2>/dev/null || true); [ -n \"\" ] && kill -9 $pids || true; pkill -f \"next dev\" 2>/dev/null || true; pkill -f \"node .*next\" 2>/dev/null || true; next dev -p 3000'",
+    "smoke": "BASE=${BASE:-http://localhost:3000} bash tools/smoke.sh",
+    "verify:completeness": "bash tools/verify-completeness.sh",
+    "completeness:v2": "bash tools/autoinstall-completeness-v2.sh",
+    "verify:all": "BASE=${BASE:-http://localhost:3000} bash tools/verify-all.sh",
+    "verify:attrs": "BASE=${BASE:-http://localhost:3000} bash tools/verify-attrs.sh",
+    "verify:single": "BASE=${BASE:-http://localhost:3000} bash tools/verify-single-route.sh",
+    "verify:essentials": "BASE=${BASE:-http://localhost:3000} bash tools/verify-essentials.sh",
+    "prepare": "husky",
+    "verify:guards": "bash tools/guard-imports.sh && eslint .",
+    "lint": "eslint .",
+    "fix": "eslint . --fix",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "dev:store": "next dev"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.28.4",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "ky": "^1.12.0",
+    "next": "^15.5.6",
+    "p-limit": "^7.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "regenerator-runtime": "^0.14.1",
+    "swr": "^2.3.6",
+    "zod": "^4.1.12"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix"
+    ]
+  },
+  "type": "module"
+}

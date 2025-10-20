@@ -1,0 +1,15 @@
+import { NextResponse } from "next/server";
+export async function POST(req: Request) {
+  const { prompt } = await req.json();
+  const title = (prompt?.toString() || "Nytt produkt").slice(0, 80);
+  const draft = {
+    id: "draft_"+Date.now(),
+    title,
+    subtitle: "Litebrygg AS",
+    description: 'Auto-generert forslag basert på: "' + title + '". Rediger før publisering.',
+    attributes: [{ key:"brand", value:"Litebrygg" }, { key:"origin", value:"NO" }],
+    images: [],
+    status: "draft" as const
+  };
+  return NextResponse.json({ ok:true, draft });
+}

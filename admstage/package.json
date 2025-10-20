@@ -1,0 +1,33 @@
+{
+  "name": "admstage",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "dev:reset": "bash -lc 'lsof -n -i4TCP:3000 -sTCP:LISTEN -t | xargs -r kill; sleep 1; lsof -n -i4TCP:3000 -sTCP:LISTEN -t | xargs -r kill -9; next dev -p 3000'",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+     "autoinstall": "bash tools/autoinstall-all.sh",
+   "verify:devops": "bash tools/autoinstall-verify.sh",
+   "predev": "tools/ibu-assert-env.sh",
+    "dev": "next dev -p 3000"
+  },
+  "dependencies": {
+    "axios": "^1.12.2",
+    "next": "14.2.33",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.33",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18",
+    "typescript": "^5"
+  }
+}
