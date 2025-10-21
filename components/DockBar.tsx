@@ -1,2 +1,3 @@
-'use client';
-export default function DockBar() { return null; }
+export default function DockBar() {
+  return null; // minimalistisk stub
+}

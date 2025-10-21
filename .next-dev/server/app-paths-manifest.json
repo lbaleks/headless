@@ -1,1 +1,5 @@
-{}
+{
+  "/api/products/merged/route": "app/api/products/merged/route.js",
+  "/api/products/update-attributes/route": "app/api/products/update-attributes/route.js",
+  "/api/products/[sku]/route": "app/api/products/[sku]/route.js"
+}
