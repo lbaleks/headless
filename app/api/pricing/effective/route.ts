@@ -1,29 +1,28 @@
-export const runtime = 'nodejs';
+export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
-import { readFile } from 'node:fs/promises'
-import { computeEffective } from '@/utils/effectivePricing'
+import { quoteLine, type QuoteLine } from '../../../../data/pricing'
 
-async function readDb(){
-  try{
-    const raw = await readFile(process.cwd()+'/data/products.json','utf8')
-    return JSON.parse(raw||'{}')
-  }catch{ return { products:[] } }
+export async function GET() {
+  // Minimal “ingenting å regne på ennå”-respons
+  return NextResponse.json({
+    ok: true,
+    pricing: { lines: [], total: 0 }
+  })
 }
 
-export async function GET(req:Request){
-  const url = new URL(req.url)
-  const id = url.searchParams.get('id') || ''
-  const db = await readDb()
-  const product = (db.products||[]).find((p:any)=> String(p.id)===String(id))
-  if(!product) return NextResponse.json({ error:'not found'},{ status:404 })
+export async function POST(req: Request) {
+  try {
+    const body = await req.json().catch(() => ({}))
+    const lines: QuoteLine[] = Array.isArray(body?.lines) ? body.lines : []
 
-  let rules:any[]=[]
-  try{
-    const raw = await readFile(process.cwd()+'/data/pricing.json','utf8')
-    const pj = JSON.parse(raw||'{}')
-    rules = Array.isArray(pj.rules)? pj.rules : []
-  }catch{}
+    const priced = lines.map(quoteLine)
+    const total = priced.reduce((acc, l) => acc + (l.price ?? 0) * (l.qty ?? 0), 0)
 
-  const effective = computeEffective(product, rules)
-  return NextResponse.json({ productId:id, effective, rules: rules.filter((r:any)=>!r.productId || String(r.productId)===String(id)) })
+    return NextResponse.json({
+      ok: true,
+      pricing: { lines: priced, total }
+    })
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err as Error).message }, { status: 400 })
+  }
 }
