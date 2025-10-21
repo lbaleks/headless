@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 
 type Item = { sku:string; price:number; stock:number; sales7d:number; margin?:number };

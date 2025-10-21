@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server'
 export async function GET() {
   // kan senere hentes fra ekstern PIM – holdes lokalt nå

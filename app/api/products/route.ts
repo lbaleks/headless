@@ -1,8 +1,8 @@
+export const runtime = 'nodejs';
 // app/api/products/route.ts
 import { NextResponse } from 'next/server'
 import { getMagentoConfig, magentoUrl } from '../_lib/env'
 
-export const runtime = 'nodejs'
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
 

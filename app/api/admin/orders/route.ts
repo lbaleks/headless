@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 // app/api/admin/orders/route.ts
 import { NextResponse } from "next/server";
 import { listOrders } from "../../../data/orders";

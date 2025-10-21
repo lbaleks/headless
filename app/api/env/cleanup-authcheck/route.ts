@@ -1,8 +1,8 @@
+export const runtime = 'nodejs';
 // app/api/env/cleanup-authcheck/route.ts
 import { NextResponse } from 'next/server'
 import { getMagentoConfig, magentoUrl } from '../../_lib/env'
 
-export const runtime = 'nodejs'
 
 export async function POST() {
   try {

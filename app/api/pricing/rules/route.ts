@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server'
 import { readPricing, writePricing } from '@/utils/pricingStore'
 

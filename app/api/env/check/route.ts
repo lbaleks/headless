@@ -1,6 +1,6 @@
+export const runtime = 'nodejs';
 // app/api/env/check/route.ts
 import { NextResponse } from 'next/server'
-export const runtime = 'nodejs'
 
 export async function GET() {
   const u = process.env.MAGENTO_URL || ''

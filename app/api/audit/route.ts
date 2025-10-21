@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server'
 const logs=[{id:1,ts:new Date().toISOString(),msg:'Server started'}]
 export async function GET(){ return NextResponse.json({logs}) }

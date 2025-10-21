@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 /* eslint-disable '@typescript-eslint/no-unused-expressions' */
 import { NextResponse } from "next/server"
 import Papa from "papaparse"

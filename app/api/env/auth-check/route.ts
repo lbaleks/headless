@@ -1,8 +1,8 @@
+export const runtime = 'nodejs';
 // app/api/env/auth-check/route.ts
 import { NextResponse } from 'next/server'
 import { getMagentoConfig, magentoUrl } from '../../_lib/env'
 
-export const runtime = 'nodejs'
 
 export async function GET() {
   try {

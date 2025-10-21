@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server'
 
 function toCSVRow(vals:any[]){return vals.map(v=>{

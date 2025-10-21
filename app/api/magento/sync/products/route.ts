@@ -1,4 +1,4 @@
-
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server'
 import { fetchProducts } from '@/integrations/magento/client'
 import { promises as fs } from 'fs'

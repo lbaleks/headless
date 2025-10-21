@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 // app/api/admin/flags/route.ts
 import { NextResponse } from "next/server";
 import { getFlags, setFlags, Flag } from "@/app/data/flags";

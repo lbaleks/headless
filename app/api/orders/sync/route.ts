@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 /* eslint-disable 'no-constant-binary-expression' */
 import { NextResponse } from 'next/server'
 import fs from 'fs/promises'

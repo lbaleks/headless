@@ -1,3 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TARGET="app/api/debug/env/magento/route.ts"
+BACKUP="${TARGET}.bak.$(date +%s)"
+mkdir -p "$(dirname "$TARGET")"
+
+echo "🔧 Backuper eksisterende route til $BACKUP"
+[ -f "$TARGET" ] && cp "$TARGET" "$BACKUP" || true
+
+cat > "$TARGET" <<'TS'
 export const runtime = 'nodejs';
 export const revalidate = 0;
 
@@ -55,3 +66,15 @@ export async function GET() {
     note: 'Dette endepunktet er kun for debugging og viser maskert token + hvilken env-nøkkel som ble brukt.'
   });
 }
+TS
+
+echo "✅ Skrev $TARGET"
+echo "🧼 Renser .next og restarter…"
+lsof -tiTCP:3000 -sTCP:LISTEN | xargs kill -9 2>/dev/null || true
+rm -rf .next .next-dev node_modules/.cache 2>/dev/null || true
+export PATH="$HOME/.volta/bin:$PATH"; hash -r
+volta run pnpm run build
+volta run pnpm start -p 3000 > /tmp/next.out 2>&1 & echo $! > /tmp/next.pid
+sleep 1
+echo "🔎 Tester /api/debug/env/magento"
+curl -s http://localhost:3000/api/debug/env/magento | jq .

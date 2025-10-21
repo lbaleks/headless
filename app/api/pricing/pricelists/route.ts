@@ -1,4 +1,4 @@
-
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server'
 import { readFile } from 'node:fs/promises'
 const F=process.cwd()+'/data/pricing.json'

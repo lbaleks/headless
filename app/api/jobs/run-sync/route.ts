@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import path from 'node:path';
 import fs from 'node:fs/promises';

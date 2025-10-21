@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 // app/api/admin/orders/bulk/route.ts
 import { NextResponse } from "next/server";
 import { bulkAction } from "../../../../data/orders";

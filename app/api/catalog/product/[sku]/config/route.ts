@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 // app/api/catalog/product/[sku]/config/route.ts
 import { NextResponse } from "next/server";
 import { getProduct, setStrategy, type Strategy } from "../../../../../data/catalog";

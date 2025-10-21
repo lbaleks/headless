@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server'
 
 type Line = { sku: string, name: string, qty: number, price: number, rowTotal: number }

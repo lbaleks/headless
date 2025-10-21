@@ -1,43 +1,42 @@
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server'
-import { getMagentoConfig, v1, getAdminToken } from '@/lib/env'
-export const runtime = 'nodejs'; export const revalidate = 0
 
-type AttrMap = Record<string,string|number|null|undefined>
+const MAGENTO_BASE_URL = process.env.MAGENTO_BASE_URL || process.env.MAGENTO_URL || ''
+const MAGENTO_ADMIN_TOKEN = process.env.MAGENTO_ADMIN_TOKEN || ''
+
+function toMagentoAttributes(attrs: Record<string,string>) {
+  return Object.entries(attrs).map(([attribute_code, value]) => ({ attribute_code, value }))
+}
 
 export async function PATCH(req: Request) {
   try {
-    const { sku, attributes } = await req.json() as { sku?: string, attributes?: AttrMap }
-    if (!sku || !attributes || typeof attributes !== 'object') {
-      return NextResponse.json({ error: 'Bad request: need { sku, attributes }' }, { status: 400 })
+    const { sku, attributes } = await req.json() as { sku: string, attributes: Record<string,string> }
+    if (!sku || !attributes) {
+      return NextResponse.json({ error: 'Bad request' }, { status: 400 })
     }
-
-    const cfg = getMagentoConfig()
-    const jwt = await getAdminToken(cfg.baseUrl, cfg.adminUser, cfg.adminPass)
-
-    // Convert to Magento custom_attributes[]
-    const custom_attributes = Object.entries(attributes)
-      .filter(([_,v]) => v !== undefined)
-      .map(([attribute_code, value]) => ({ attribute_code, value: String(value ?? '') }))
-
-    const res = await fetch(`${v1(cfg.baseUrl)}/products/${encodeURIComponent(sku)}`, {
+    const custom_attributes = toMagentoAttributes(attributes)
+    const url = `${MAGENTO_BASE_URL.replace(/\/$/, '')}/V1/products/${encodeURIComponent(sku)}`
+    const res = await fetch(url, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${jwt}`,
         'Content-Type': 'application/json',
+        ...(MAGENTO_ADMIN_TOKEN ? { 'Authorization': `Bearer ${MAGENTO_ADMIN_TOKEN}` } : {})
       },
       body: JSON.stringify({ product: { sku, custom_attributes }, saveOptions: true }),
-      cache: 'no-store',
+      cache: 'no-store'
     })
 
-    const text = await res.text()
-    let json: any = null
-    try { json = text ? JSON.parse(text) : null } catch { /* keep raw text */ }
-
     if (!res.ok) {
-      return NextResponse.json({ error: `Magento PUT ${res.status}`, magento: json ?? text }, { status: 500 })
+      // prøv json -> tekst -> statusText
+      let detail: any
+      try { detail = await res.json() } 
+      catch { try { detail = await res.text() } catch { detail = res.statusText } }
+      return NextResponse.json({ error: `Magento PUT ${res.status}`, magento: detail }, { status: 500 })
     }
-    return NextResponse.json({ success: true, magento: json ?? { ok: true } })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Unhandled' }, { status: 500 })
+
+    const magento = await res.json()
+    return NextResponse.json({ success: true, magento })
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? 'Unhandled error' }, { status: 500 })
   }
 }

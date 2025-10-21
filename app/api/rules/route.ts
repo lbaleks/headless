@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 // app/api/rules/route.ts (alias of pricing rules)
 import { NextResponse } from "next/server";
 import { pricingDB, type Rule } from "../../data/pricing";

@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 // app/api/users/[id]/route.ts
 import { NextResponse } from "next/server";
 import { db, upsertUser } from "../../../data/b2b";
