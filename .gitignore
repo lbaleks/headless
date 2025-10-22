@@ -41,3 +41,10 @@ next-env.d.ts
 !.env.example
 .env*
 !.env.example
+.env*
+.env*
+
+# miljøfiler (autoinstaller)
+.env
+.env.local
+.env.*

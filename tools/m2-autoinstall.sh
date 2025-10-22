@@ -1,3 +1,4 @@
+: "${MAGENTO_USER:?Missing MAGENTO_USER in .env.local}"; : "${MAGENTO_PASS:?Missing MAGENTO_PASS in .env.local}"
 # tools/m2-autoinstall.sh
 #!/usr/bin/env bash
 set -euo pipefail
