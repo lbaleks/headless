@@ -6,7 +6,7 @@
     "@eslint/js": "^9.38.0",
     "@next/eslint-plugin-next": "^15.5.6",
     "@tailwindcss/postcss": "^4.1.14",
-    "@types/node": "^24.7.2",
+    "@types/node": "^24.8.1",
     "@types/react": "19.2.2",
     "autoprefixer": "^10.4.21",
     "babel-plugin-react-compiler": "^1.0.0",
@@ -25,11 +25,11 @@
     "typescript-eslint": "^8.46.1"
   },
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3000",
     "sanity:api": "node scripts/sanity-api.mjs",
-    "autoinstall": "bash tools/autoinstall-dev-suite.sh",
+    "autoinstall": "tools/beer-autoinstall.sh",
     "verify:devops": "bash tools/autoinstall-verify.sh",
     "autopatch:jobs": "bash tools/autopatch-jobs.sh",
     "verify:jobs": "bash -lc 'set -e; export BASE=http://localhost:3000; curl -s -X POST \"$BASE/api/jobs/run-sync\" | jq -c . > /dev/null; curl -s \"$BASE/api/jobs/latest\" | jq -c . > /dev/null; echo OK'",
@@ -47,7 +47,14 @@
     "fix": "eslint . --fix",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "dev:store": "next dev"
+    "dev:store": "next dev",
+    "fix:runtime": "bash tools/next15-fix-runtime2.sh",
+    "heal": "bash tools/next15-heal_compat.sh",
+    "rebuild:start": "pkill -f 'next start' || true && rm -rf .next .next-dev node_modules/.cache 2>/dev/null || true && volta run pnpm run build && volta run pnpm start -p 3000",
+    "m2:autoinstall": "bash tools/m2-autoinstall.sh",
+    "m2:rotate": "MAGENTO_USER=aleksander MAGENTO_PASS='Riise1986!' bash tools/m2-autoinstall.sh",
+    "start:prod": "next start -p 3000",
+    "start:safe": "scripts/start-safe.sh"
   },
   "dependencies": {
     "@babel/runtime": "^7.28.4",
@@ -56,6 +63,7 @@
     "ky": "^1.12.0",
     "next": "^15.5.6",
     "p-limit": "^7.2.0",
+    "papaparse": "^5.5.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "regenerator-runtime": "^0.14.1",
@@ -67,5 +75,11 @@
       "eslint --fix"
     ]
   },
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": ">=18.18 <22"
+  },
+  "volta": {
+    "node": "20.19.5"
+  }
 }
