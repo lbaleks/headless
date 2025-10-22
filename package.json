@@ -27,7 +27,7 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "PORT=${PORT:-3000} bash -lc \"source tools/preflight-env.sh; next start -p $PORT\"",
     "sanity:api": "node scripts/sanity-api.mjs",
     "autoinstall": "tools/beer-autoinstall.sh",
     "verify:devops": "bash tools/autoinstall-verify.sh",
@@ -53,7 +53,7 @@
     "rebuild:start": "pkill -f 'next start' || true && rm -rf .next .next-dev node_modules/.cache 2>/dev/null || true && volta run pnpm run build && volta run pnpm start -p 3000",
     "m2:autoinstall": "bash tools/m2-autoinstall.sh",
     "m2:rotate": "bash tools/m2-autoinstall.sh",
-    "start:prod": "next start -p 3000",
+    "start:prod": "PORT=${PORT:-3000} bash -lc \"source tools/preflight-env.sh; next start -p $PORT\"",
     "start:safe": "scripts/start-safe.sh",
     "autoinstall:secrets": "bash tools/autoinstall-secrets.sh"
   },
