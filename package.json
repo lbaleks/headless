@@ -22,51 +22,35 @@
     "prettier": "^3.6.2",
     "tailwindcss": "^4.1.14",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.46.1"
+    "typescript-eslint": "^8.46.1",
+    "eslint-config-next": "15.5.6"
   },
   "scripts": {
-    "dev": "next dev -p 3001",
-    "build": "next build",
-    "start": "PORT=${PORT:-3000} bash -lc \"source tools/preflight-env.sh; next start -p $PORT\"",
-    "sanity:api": "node scripts/sanity-api.mjs",
-    "autoinstall": "tools/beer-autoinstall.sh",
+    "dev": "tools/next20 dev -p 3000",
+    "dev:smoke": "tools/dev-smoke.sh",
+    "build": "tools/next20 build",
+    "start": "tools/next20 start -p ${PORT:-3100}",
+    "deploy:prod": "tools/pn20 install && tools/pn20 run build && pm2 reload m2-web --update-env && pm2 save",
+    "prod:smoke": "tools/prod-smoke.sh",
+    "approve-builds": "tools/pn20 approve-builds",
+    "status": "pm2 status && curl -fsS http://127.0.0.1:3100/api/health | jq . && curl -fsS http://127.0.0.1:3100/api/magento/health | jq .",
+    "install:prod": "tools/pn20 install",
+    "build:prod": "tools/pn20 run build",
+    "lint": "tools/pn20 exec next lint",
     "verify:devops": "bash tools/autoinstall-verify.sh",
-    "autopatch:jobs": "bash tools/autopatch-jobs.sh",
-    "verify:jobs": "bash -lc 'set -e; export BASE=http://localhost:3000; curl -s -X POST \"$BASE/api/jobs/run-sync\" | jq -c . > /dev/null; curl -s \"$BASE/api/jobs/latest\" | jq -c . > /dev/null; echo OK'",
-    "dev:reset": "bash tools/dev-reset.sh",
-    "smoke": "BASE=${BASE:-http://localhost:3000} bash tools/smoke.sh",
-    "verify:completeness": "bash tools/verify-completeness.sh",
-    "completeness:v2": "bash tools/autoinstall-completeness-v2.sh",
-    "verify:all": "BASE=${BASE:-http://localhost:3000} bash tools/verify-all.sh",
-    "verify:attrs": "BASE=${BASE:-http://localhost:3000} bash tools/verify-attrs.sh",
-    "verify:single": "BASE=${BASE:-http://localhost:3000} bash tools/verify-single-route.sh",
-    "verify:essentials": "BASE=${BASE:-http://localhost:3000} bash tools/verify-essentials.sh",
-    "prepare": "husky",
-    "verify:guards": "bash tools/guard-imports.sh && eslint .",
-    "lint": "eslint .",
-    "fix": "eslint . --fix",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "dev:store": "next dev",
-    "fix:runtime": "bash tools/next15-fix-runtime2.sh",
-    "heal": "bash tools/next15-heal_compat.sh",
-    "rebuild:start": "pkill -f 'next start' || true && rm -rf .next .next-dev node_modules/.cache 2>/dev/null || true && volta run pnpm run build && volta run pnpm start -p 3000",
-    "m2:autoinstall": "bash tools/m2-autoinstall.sh",
-    "m2:rotate": "bash tools/m2-autoinstall.sh",
-    "start:prod": "PORT=${PORT:-3000} bash -lc \"source tools/preflight-env.sh; next start -p $PORT\"",
-    "start:safe": "scripts/start-safe.sh",
-    "autoinstall:secrets": "bash tools/autoinstall-secrets.sh"
+    "autoinstall": "bash tools/autoinstall-all.sh",
+    "predev": "tools/ibu-assert-env.sh"
   },
   "dependencies": {
     "@babel/runtime": "^7.28.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "ky": "^1.12.0",
-    "next": "^15.5.6",
+    "next": "15.5.6",
     "p-limit": "^7.2.0",
     "papaparse": "^5.5.3",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
     "regenerator-runtime": "^0.14.1",
     "swr": "^2.3.6",
     "zod": "^4.1.12"
@@ -78,9 +62,10 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=18.18 <22"
+    "node": ">=20 <21"
   },
   "volta": {
     "node": "20.19.5"
-  }
+  },
+  "packageManager": "pnpm@10.19.0"
 }

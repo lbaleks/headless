@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+NODE_DIR="$HOME/.nvm/versions/node/v20.19.5"
+BIN="$NODE_DIR/bin"
+
+if [[ ! -x "$BIN/node" ]]; then
+  echo "❌ Fant ikke Node 20 i $BIN. Kjør: nvm install 20 && nvm use 20" >&2
+  exit 1
+fi
+
+# Bruk pnpm.cjs fra dette Node 20-prefixet (uavhengig av systemets PATH)
+PNPM_JS="$("$BIN/npm" root -g --prefix "$NODE_DIR")/pnpm/bin/pnpm.cjs"
+if [[ ! -f "$PNPM_JS" ]]; then
+  echo "ℹ️ Installerer pnpm@10.19.0 globalt i $NODE_DIR ..."
+  "$BIN/npm" i -g pnpm@10.19.0 --prefix "$NODE_DIR" --force >/dev/null
+fi
+
+exec "$BIN/node" "$PNPM_JS" "$@"

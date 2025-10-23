@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+NODE="$HOME/.nvm/versions/node/v20.19.5/bin/node"
+
+# Foretrekk prosjektets Next-bin
+NEXT_JS="./node_modules/next/dist/bin/next"
+if [[ ! -f "$NEXT_JS" ]]; then
+  # fallback: global next hvis installert under samme Node 20
+  ALT="$HOME/.nvm/versions/node/v20.19.5/lib/node_modules/next/dist/bin/next"
+  [[ -f "$ALT" ]] && NEXT_JS="$ALT"
+fi
+
+if [[ ! -f "$NEXT_JS" ]]; then
+  echo "❌ Finner ikke next-bin. Kjør 'tools/pn20 install' først." >&2
+  exit 1
+fi
+
+exec "$NODE" "$NEXT_JS" "$@"
